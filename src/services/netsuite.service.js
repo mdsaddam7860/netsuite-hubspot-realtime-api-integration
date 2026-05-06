@@ -3,7 +3,6 @@ import { logger } from "../index.js";
 
 // -----------------------Config Imports-----------------------
 import { getNetsuiteClient } from "../configs/netsuite.config.js";
-import { hubspotExecutor } from "../utils/executors.js";
 import { getHubspotClient } from "../configs/hubspot.config.js";
 // -----------------------Executor Imports-----------------------
 import { hubspotExecutor, netsuiteExecutor } from "../utils/executors.js";
@@ -377,6 +376,50 @@ async function fetchCustomerById(customerId) {
     throw error;
   }
 }
+async function fetchCustomer(customKey, customValue) {
+  if (!customKey || !customValue) {
+    logger.warn("field or value is empty");
+    return;
+  }
+  // Update the query to filter by the specific ID
+  // SELECT id, companyname, firstname, lastname, email, phone, isperson
+  const query = `
+    SELECT *
+    FROM customer 
+    WHERE ${customKey} = '${customValue}' 
+      AND isinactive = 'F'
+  `;
+
+  // logger.info(`Fetching NetSuite customer with ID: ${customerId}...`);
+
+  try {
+    // We only need 1 record, so limit = 1 and offset = 0
+    const response = await runSuiteQL(query, { limit: 1, offset: 0 });
+
+    const records = response.items || [];
+
+    // Check if the customer actually exists
+    if (records.length === 0) {
+      logger.warn(`No active customer found with value: ${customValue}`);
+      return null;
+    }
+
+    const customer = records[0];
+    logger.info(
+      `Successfully fetched customer: ${JSON.stringify(
+        response.items,
+        null,
+        2
+      )}`
+    );
+
+    return customer;
+  } catch (error) {
+    logger.error(`❌ Failed to fetch customer ${customerId}:`, error.message);
+    // It's usually best to throw the error so the caller (like your webhook handler) can catch it
+    throw error;
+  }
+}
 
 async function processCustomers() {
   try {
@@ -416,7 +459,7 @@ async function processCustomers() {
   }
 }
 
-async function processTONesuiteCustomer(sourceData, type) {
+async function processHSToNetsuite(sourceData, type) {
   if (!sourceData || !type) {
     logger.warn(
       `sourceData : ${JSON.stringify(sourceData)} or type : ${type} is empty`
@@ -453,17 +496,28 @@ async function processTONesuiteCustomer(sourceData, type) {
     } else if (type === "company" && sourceData?.id) {
       const hs_company = await hs_client.companies.get(sourceData?.id);
 
-      // Insert as Company in NetSuite
+      let netsuiteId = null;
+      if (hs_company && hs_company?.properties?.sourceid) {
+        // TODO , Change field name to match the one you are using in HubSpot to store the NetSuite internal ID. This is crucial for the upsert logic to work correctly.
+        const ns_customer = await fetchCustomerById(
+          hs_contact?.properties?.sourceid
+        );
+        netsuiteId = ns_customer?.id;
+      }
+
+      const payload = mapToNetSuiteCompany(hs_contact?.properties);
+
+      // Insert as Contact in NetSuite
       const netsuiteCustomer = await upsertNetSuiteCustomer(
-        hs_company,
-        "company"
+        payload,
+        netsuiteId
       );
       logger.info(
         `NetSuite Customer: ${JSON.stringify(netsuiteCustomer, null, 2)}`
       );
     }
   } catch (error) {
-    logger.error(`Error processing customers:processTONesuiteCustomer`, {
+    logger.error(`Error processing customers:processHSToNetsuite`, {
       status: error?.status,
       response: error.response?.data,
       method: error?.method,
@@ -475,7 +529,8 @@ async function processTONesuiteCustomer(sourceData, type) {
 }
 
 export {
-  processTONesuiteCustomer,
+  fetchCustomer,
+  processHSToNetsuite,
   fetchCustomerById,
   processCustomers,
   upsertNetSuiteCustomer,

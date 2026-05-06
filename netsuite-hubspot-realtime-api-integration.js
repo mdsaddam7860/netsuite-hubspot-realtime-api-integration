@@ -7,6 +7,7 @@ import {
   syncNetsuiteCustomerToHubspot,
   fetchAllActiveCustomers,
   fetchCustomerById,
+  fetchCustomer,
 } from "./src/services/netsuite.service.js";
 import {
   upsertCompanyInHubspot,
@@ -30,6 +31,7 @@ requiredDirs.forEach((dir) => {
 const PORT = process.env.PORT || 5000;
 
 serverInit();
+fetchCustomer("email", "bjpayne62@gmail.com");
 
 async function init() {
   try {
@@ -38,7 +40,7 @@ async function init() {
       logger.info(`Configs Initialization initialized successfully`);
       getHubspotClient();
       getNetsuiteClient();
-      startSchedulers();
+      // startSchedulers();
     } catch (error) {
       logger.error("Error in Configs Initialization:", {
         status: error?.status,

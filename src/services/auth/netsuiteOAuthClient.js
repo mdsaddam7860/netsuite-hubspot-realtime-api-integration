@@ -13,7 +13,6 @@ if (!baseURL || !consumerKey || !consumerSecret || !tokenKey || !tokenSecret) {
   console.error(
     "Missing one of NETSUITE_BASE_URL, NETSUITE_CONSUMER_KEY, NETSUITE_CONSUMER_SECRET, NETSUITE_TOKEN_ID, or NETSUITE_TOKEN_SECRET in .env"
   );
-  // process.exit(1);
 }
 
 // OAuth1 instance using HMAC-SHA256 (match Postman)

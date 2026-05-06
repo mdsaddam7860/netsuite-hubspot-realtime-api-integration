@@ -6,7 +6,7 @@
 import { logger } from "../index.js";
 import {
   fetchCustomerById,
-  processTONesuiteCustomer,
+  processHSToNetsuite,
 } from "../services/netsuite.service.js"; // Adjust path as needed
 // Assuming you have these utility functions similar to the product sync
 // import { mapNetSuiteCustomerToHubSpot } from "../mapCustomerFields.js";
@@ -144,7 +144,7 @@ async function handleHubspotContactWebhooks(next, req, res, err) {
   // After receiving webhook from Hubspot find contact full details by ID(if provided) and trigger contact sync to NetSuite. This ensures we always have the most up-to-date data and can handle cases where HubSpot might not send all fields in the webhook payload.
 
   try {
-    processTONesuiteCustomer(req.body, "contact");
+    await processHSToNetsuite(req.body, "contact");
   } catch (error) {
     console.error(`❌ [WEBHOOK] Fatal error syncing Customer ${customerId}:`, {
       httpStatus: error?.status,
@@ -170,7 +170,7 @@ async function handleHubspotCompanyWebhooks(next, req, res, err) {
   // After receiving webhook from Hubspot find contact full details by ID(if provided) and trigger contact sync to NetSuite. This ensures we always have the most up-to-date data and can handle cases where HubSpot might not send all fields in the webhook payload.
 
   try {
-    processTONesuiteCustomer(req.body, "company");
+    await processHSToNetsuite(req.body, "company");
   } catch (error) {
     console.error(
       `❌ [WEBHOOK] Fatal error handleHubspotContactWebhooks ${customerId}:`,

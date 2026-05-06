@@ -22,7 +22,7 @@ function contactMappingNSToHS(sourceData) {
     return null;
   }
   const payload = cleanProps({
-    // sourceid: sourceData?.id,
+    sourceid: sourceData?.id,
     email: sourceData?.email,
     phone: sourceData.phone,
     mobilephone: sourceData.mobile,
@@ -42,7 +42,7 @@ function contactMappingNSToHS(sourceData) {
 
 function companyMappingNSToHS(sourceData) {
   const payload = cleanProps({
-    // sourceid: sourceData?.id,
+    sourceid: sourceData?.id,
     name: sourceData?.companyname,
     // domain: sourceData?.website,
     address: sourceData?.defaultbillingaddress,
