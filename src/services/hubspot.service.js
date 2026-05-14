@@ -113,6 +113,9 @@ async function findContactInHubspot(contactInfo = {}) {
       );
 
       if (contactByEmail) {
+        logger.info(
+          `Contact Found via email: ${JSON.stringify(contactByEmail)}`
+        );
         return contactByEmail; // Found via email, return early
       }
 
@@ -122,40 +125,40 @@ async function findContactInHubspot(contactInfo = {}) {
     }
 
     // 2. Fallback: Search by PHONE if email wasn't found (or wasn't provided)
-    const rawPhone = contactInfo?.mobile || contactInfo?.phone || null;
+    // const rawPhone = contactInfo?.mobile || contactInfo?.phone || null;
 
-    if (rawPhone) {
-      let cleaned = rawPhone.replace(/\D/g, "");
+    // if (rawPhone) {
+    //   let cleaned = rawPhone.replace(/\D/g, "");
 
-      // Format Australian phone numbers
-      if (cleaned.startsWith("0")) {
-        cleaned = "+61" + cleaned.substring(1);
-      } else if (cleaned.startsWith("61")) {
-        cleaned = "+" + cleaned;
-      } else if (cleaned) {
-        cleaned = "+61" + cleaned;
-      }
+    //   // Format Australian phone numbers
+    //   if (cleaned.startsWith("0")) {
+    //     cleaned = "+61" + cleaned.substring(1);
+    //   } else if (cleaned.startsWith("61")) {
+    //     cleaned = "+" + cleaned;
+    //   } else if (cleaned) {
+    //     cleaned = "+61" + cleaned;
+    //   }
 
-      const filterGroups = [
-        {
-          filters: [
-            {
-              propertyName: "mobilephone",
-              operator: "EQ",
-              value: cleaned,
-            },
-          ],
-        },
-      ];
+    //   const filterGroups = [
+    //     {
+    //       filters: [
+    //         {
+    //           propertyName: "mobilephone",
+    //           operator: "EQ",
+    //           value: cleaned,
+    //         },
+    //       ],
+    //     },
+    //   ];
 
-      const existingContact = await hs_client.contacts.searchContacts(
-        filterGroups
-      );
+    //   const existingContact = await hs_client.contacts.searchContacts(
+    //     filterGroups
+    //   );
 
-      if (existingContact?.results?.length >= 1) {
-        return existingContact.results[0]; // Found via phone
-      }
-    }
+    //   if (existingContact?.results?.length >= 1) {
+    //     return existingContact.results[0]; // Found via phone
+    //   }
+    // }
 
     // 3. No match found via email or phone
     return null;
@@ -167,10 +170,18 @@ async function findContactInHubspot(contactInfo = {}) {
 
 // Future Reference - Params I will need to add in my SDK: endpoint,payload, searchParams,associations, etc. I can also add a param to decide whether to search by email or phone first or both. This function will be used in the upsertContactInHubspot function to check if the contact already exists before deciding to create or update.
 async function upsertContactInHubspot(record) {
+  if (!record || !record.email) {
+    logger.warn(
+      `Record is empty or No email found in record: ${JSON.stringify(record)}`
+    );
+    return;
+  }
   try {
-    logger.info(`[Netsuite Customer] : ${JSON.stringify(record, null, 2)}`);
+    logger.info(
+      `[Netsuite Customer/Person] : ${JSON.stringify(record, null, 2)}`
+    );
     const hs_client = getHubspotClient();
-    const payload = contactMappingNSToHS(record);
+    const properties = contactMappingNSToHS(record);
 
     if (!payload) {
       logger.warn(
@@ -179,19 +190,23 @@ async function upsertContactInHubspot(record) {
       return;
     }
 
-    let existingContact = null;
-    if (record) {
-      existingContact = await findContactInHubspot(record);
-    }
+    const payload = {
+      inputs: [
+        {
+          id: record.email,
+          idProperty: "email",
+          properties,
+        },
+      ],
+    };
 
-    if (existingContact) {
-      return await hs_client.contacts.updateContact(
-        existingContact.id,
-        payload
-      );
-    } else {
-      return await hs_client.contacts.createContact(payload);
-    }
+    logger.info(`Payload : ${JSON.stringify(payload, null, 2)}`);
+
+    // hs_client.contacts.batchUpsert;
+    const res = await hs_client.contacts.batchUpsert(payload);
+    logger.info(
+      `Contact Updated/Created Successfully: ${JSON.stringify(res, null, 2)}`
+    );
   } catch (error) {
     logger.error("❌ HubSpot Contact failed to upsert (outer catch):", {
       httpStatus: error?.status,
@@ -205,29 +220,91 @@ async function upsertContactInHubspot(record) {
     throw error;
   }
 }
+// async function upsertContactInHubspot(record) {
+//   try {
+//     logger.info(`[Netsuite Customer] : ${JSON.stringify(record, null, 2)}`);
+//     const hs_client = getHubspotClient();
+//     const payload = contactMappingNSToHS(record);
+
+//     if (!payload) {
+//       logger.warn(
+//         `Payload is empty for Record : ${JSON.stringify(record, null, 2)}`
+//       );
+//       return;
+//     }
+
+//     let existingContact = null;
+//     if (record) {
+//       existingContact = await findContactInHubspot(record);
+//     }
+
+//     logger.info(`Payload : ${JSON.stringify(payload, null, 2)}`);
+
+//     if (existingContact) {
+//       const res = await hs_client.contacts.updateContact(
+//         existingContact.id,
+//         payload
+//       );
+//       logger.info(
+//         `Contact Updated Successfully: ${JSON.stringify(res, null, 2)}`
+//       );
+//     } else {
+//       const res = await hs_client.contacts.createContact(payload);
+//       logger.info(
+//         `Contact Created Successfully: ${JSON.stringify(res, null, 2)}`
+//       );
+//     }
+//   } catch (error) {
+//     logger.error("❌ HubSpot Contact failed to upsert (outer catch):", {
+//       httpStatus: error?.status,
+//       response: error?.response?.data,
+//       method: error?.method,
+//       url: error?.config?.url,
+//       message: error?.message,
+//       stack: error?.stack || error,
+//     });
+
+//     throw error;
+//   }
+// }
 async function upsertCompanyInHubspot(record) {
+  if (!record || !record.id) {
+    logger.warn(
+      `Record is empty or No id found in record: ${JSON.stringify(record)}`
+    );
+    return;
+  }
   try {
     // Find company if exist update else create company
     const hs_client = getHubspotClient();
 
-    const payload = companyMappingNSToHS(record); //
+    const properties = companyMappingNSToHS(record);
+
+    if (!properties) {
+      logger.warn(
+        `Payload is empty for Record : ${JSON.stringify(record, null, 2)}`
+      );
+      return;
+    }
+
+    const payload = {
+      inputs: [
+        {
+          id: record.id,
+          idProperty: "sourceid",
+          properties,
+        },
+      ],
+    };
+
     logger.info(`Payload ${JSON.stringify(payload, null, 2)}`);
 
-    // search company based on sourceid
-    const existingCompany = await hs_client.companies.getCompanyByCustomField(
-      "name",
-      record?.companyname
-    );
+    const res = await hs_client.companies.batchUpsert(payload);
 
-    if (existingCompany) {
-      return await hs_client.companies.updateCompany(
-        existingCompany?.id,
-        payload
+    if (res.status === "COMPLETE")
+      logger.info(
+        `Company Upserted Successfully: ${JSON.stringify(res, null, 2)}`
       );
-    } else {
-      // create  contact
-      return await hs_client.companies.createCompany(payload);
-    }
   } catch (error) {
     logger.error("❌ HubSpot Company failed to upsert:", {
       httpStatus: error?.status,
@@ -237,9 +314,50 @@ async function upsertCompanyInHubspot(record) {
       message: error?.message,
       stack: error?.stack || error,
     });
-    throw error;
+    // throw error;
   }
 }
+// async function upsertCompanyInHubspot(record) {
+//   try {
+//     // Find company if exist update else create company
+//     const hs_client = getHubspotClient();
+
+//     const payload = companyMappingNSToHS(record); //
+//     logger.info(`Payload ${JSON.stringify(payload, null, 2)}`);
+
+//     // search company based on sourceid
+//     const existingCompany = await hs_client.companies.getCompanyByCustomField(
+//       "sourceid",
+//       record?.id
+//     );
+
+//     if (existingCompany) {
+//       const res = await hs_client.companies.updateCompany(
+//         existingCompany?.id,
+//         payload
+//       );
+//       logger.info(
+//         `Company Updated Successfully: ${JSON.stringify(res, null, 2)}`
+//       );
+//     } else {
+//       // create  contact
+//       const res = await hs_client.companies.createCompany(payload);
+//       logger.info(
+//         `Company Created Successfully: ${JSON.stringify(res, null, 2)}`
+//       );
+//     }
+//   } catch (error) {
+//     logger.error("❌ HubSpot Company failed to upsert:", {
+//       httpStatus: error?.status,
+//       response: error?.response?.data,
+//       method: error?.method,
+//       url: error?.config?.url,
+//       message: error?.message,
+//       stack: error?.stack || error,
+//     });
+//     // throw error;
+//   }
+// }
 
 async function syncHubspotContactToServiceM8Client() {
   try {
@@ -302,6 +420,7 @@ async function searchInHubspot(
 ) {
   try {
     const url = `/crm/v3/objects/${endpoint}/search`;
+    console.log("URL", url);
     const filterGroups = [
       {
         filters: [

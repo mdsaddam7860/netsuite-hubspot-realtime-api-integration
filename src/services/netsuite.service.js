@@ -74,7 +74,7 @@ async function* netsuiteGenerator(endpoint, limit = 1, offset = 1) {
       hasMore = response.data?.hasMore;
     } while (hasMore);
   } catch (error) {
-    logger.error("❌ Critical startup failure:", {
+    logger.error(" Critical startup failure:", {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
@@ -101,7 +101,7 @@ async function syncNetsuiteInvoiceToHubspot() {
       return; // TODO Remove after testing
     }
   } catch (error) {
-    logger.error("❌ Critical startup failure:", {
+    logger.error(" Critical startup failure:", {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
@@ -128,7 +128,7 @@ async function syncNetsuiteCustomerToHubspot() {
       return; // TODO Remove after testing
     }
   } catch (error) {
-    logger.error("❌ Critical startup failure:", {
+    logger.error(" Critical startup failure:", {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
@@ -213,7 +213,7 @@ async function upsertInvoiceInNetsuite(
     return;
     return await createNetSuiteInvoice(payload);
   } catch (error) {
-    logger.error("❌ Critical startup failure:", {
+    logger.error(" Critical startup failure:", {
       httpStatus: error?.status,
       message: error.message,
       data: error.response?.data,
@@ -233,18 +233,22 @@ async function* fetchAllActiveCustomers() {
   let allCustomers = [];
   let hasMore = true;
   let offset = 0;
+  let pageCount = 0;
+  let totalProcessed = 0;
   const limit = 100; // Match the limit in your wrapper
 
   logger.info("Starting NetSuite customer extraction...");
 
   try {
     while (hasMore) {
+      pageCount++;
       // Call your wrapper
       const response = await runSuiteQL(query, { limit, offset });
 
       // NetSuite returns the rows inside the 'items' array
       const records = response.items || [];
       // allCustomers.push(...records);
+      totalProcessed += records.length;
 
       // logger.info(
       //   `Fetched ${records.length} records... (Total: ${
@@ -371,7 +375,7 @@ async function fetchCustomerById(customerId) {
 
     return customer;
   } catch (error) {
-    logger.error(`❌ Failed to fetch customer ${customerId}:`, error.message);
+    logger.error(` Failed to fetch customer ${customerId}:`, error.message);
     // It's usually best to throw the error so the caller (like your webhook handler) can catch it
     throw error;
   }
@@ -415,7 +419,137 @@ async function fetchCustomer(customKey, customValue) {
 
     return customer;
   } catch (error) {
-    logger.error(`❌ Failed to fetch customer ${customerId}:`, error.message);
+    logger.error(` Failed to fetch customer :`, {
+      status: error?.status,
+      response: error.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error.message,
+      stack: error?.stack || error,
+    });
+    // It's usually best to throw the error so the caller (like your webhook handler) can catch it
+    throw error;
+  }
+}
+//   const query = `
+//   SELECT
+//   nkey,
+//   addr1,
+//   addr2,
+//   city,
+//   state,
+//   zip,
+//   country
+// FROM customeraddressbookentityaddress
+// WHERE nkey = '427140'
+// `;
+async function fetchObjectFromNetsuite(table, customKey, customValue) {
+  if (!customKey || !customValue) {
+    logger.warn("field or value is empty");
+    return;
+  }
+  // FROM ${table}
+  // WHERE ${customKey} = '${customValue}'
+
+  const query = `
+    SELECT 
+        c.*,
+        bill_addr.addr1 AS billing_address_line_1,
+        bill_addr.addr2 AS billing_address_line_2,
+        bill_addr.city AS billing_city,
+        bill_addr.state AS billing_state,
+        bill_addr.zip AS billing_zip,
+        bill_addr.country AS billing_country,
+        ship_addr.addr1 AS shipping_address_line_1,
+        ship_addr.addr2 AS shipping_address_line_2,
+        ship_addr.city AS shipping_city,
+        ship_addr.state AS shipping_state,
+        ship_addr.zip AS shipping_zip,
+        ship_addr.country AS shipping_country
+    FROM ${table} c
+    LEFT JOIN customeraddressbookentityaddress bill_addr 
+        ON c.defaultbillingaddress = bill_addr.nkey
+    LEFT JOIN customeraddressbookentityaddress ship_addr 
+        ON c.defaultshippingaddress = ship_addr.nkey
+    WHERE ${customKey} = '${customValue}'
+`;
+
+  // AND isinactive = 'F'
+
+  try {
+    // We only need 1 record, so limit = 1 and offset = 0
+    const response = await runSuiteQL(query, { limit: 1, offset: 0 });
+
+    const records = response.items || [];
+
+    // Check if the customer actually exists
+    if (records.length === 0) {
+      logger.warn(`No active customer found with value: ${customValue}`);
+      return null;
+    }
+
+    const customer = records[0];
+    logger.info(
+      `Successfully fetched customer: ${JSON.stringify(
+        response.items,
+        null,
+        2
+      )}`
+    );
+
+    return customer;
+  } catch (error) {
+    logger.error(` Failed to fetch customer:`, {
+      status: error?.status,
+      response: error.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error.message,
+      stack: error?.stack || error,
+    });
+    // It's usually best to throw the error so the caller (like your webhook handler) can catch it
+    throw error;
+  }
+}
+async function fetchFromNetsuite(query, limit = 1, offset = 0) {
+  if (!query) {
+    logger.warn(`Query is empty : ${query}`);
+    return;
+  }
+
+  try {
+    // We only need 1 record, so limit = 1 and offset = 0
+    const response = await runSuiteQL(query, { limit, offset });
+
+    const records = response.items || [];
+
+    // Check if the customer actually exists
+    if (records.length === 0) {
+      logger.warn(`No Record found for Query: ${query}`);
+      return null;
+    }
+
+    logger.info(`Resords found: ${JSON.stringify(records, null, 2)}`);
+
+    // const res = records[0];
+    // logger.info(
+    //   `Successfully fetched customer: ${JSON.stringify(
+    //     response.items,
+    //     null,
+    //     2
+    //   )}`
+    // );
+
+    return response;
+  } catch (error) {
+    logger.error(` Failed to fetch Record:`, {
+      status: error?.status,
+      response: error.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error.message,
+      stack: error?.stack || error,
+    });
     // It's usually best to throw the error so the caller (like your webhook handler) can catch it
     throw error;
   }
@@ -529,6 +663,8 @@ async function processHSToNetsuite(sourceData, type) {
 }
 
 export {
+  fetchFromNetsuite,
+  fetchObjectFromNetsuite,
   fetchCustomer,
   processHSToNetsuite,
   fetchCustomerById,

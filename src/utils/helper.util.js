@@ -441,7 +441,26 @@ function shouldUpdateDeal(newPayload, existingDeal) {
   logger.info(`[Idempotency] No status change detected. Skipping update.`);
   return false;
 }
+
+/**
+ * Validates if a given string is a properly formatted email address.
+ * @param {string} email - The email address to validate.
+ * @returns {boolean} - Returns true if valid, false otherwise.
+ */
+function isValidEmail(email) {
+  // Return false if email is null, undefined, or not a string
+  if (!email || typeof email !== "string") {
+    return false;
+  }
+
+  // Standard regex for email validation
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+  // .trim() ensures accidental leading/trailing spaces don't fail the check
+  return emailRegex.test(email.trim());
+}
 export {
+  isValidEmail,
   shouldUpdateDeal,
   taskProperties,
   needsUpdate,

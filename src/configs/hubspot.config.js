@@ -11,6 +11,7 @@ function getHubspotClient() {
     hubspotClient = createClient({
       apiKey: process.env.HUBSPOT_API_KEY, // or ACCESS TOKEN
       accessToken: process.env.HUBSPOT_ACCESS_TOKEN,
+      maxRetries: 0,
     });
   }
   return hubspotClient;

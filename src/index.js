@@ -1,5 +1,10 @@
+// This file is used to export all the modules and utilities from a single entry point. This way, other parts of the application can import what they need from this file, rather than having to know the specific paths to each module.
+
+//  ---------------------Logger---------------------
 import { logger } from "./utils/winston.logger.js";
+// ---------------------Configs--------------------------
 import { getHSAxios, hubspotClient } from "./configs/hubspot.config.js";
+// ---------------------Utilities--------------------------
 import {
   Throttle,
   throttle,
@@ -9,6 +14,7 @@ import {
 } from "./utils/requestExecutor.js";
 
 import {
+  isValidEmail,
   shouldUpdateDeal,
   taskProperties,
   needsUpdate,
@@ -26,6 +32,7 @@ import {
 } from "./utils/helper.util.js";
 
 export {
+  isValidEmail,
   shouldUpdateDeal,
   taskProperties,
   needsUpdate,

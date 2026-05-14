@@ -4,9 +4,12 @@
  */
 
 import { logger } from "../index.js";
+import { companyMappingNSToHS } from "../mapping/netsuite-hubspot.mapping.js";
+import { searchInHubspot } from "../services/hubspot.service.js";
 import {
   fetchCustomerById,
   processHSToNetsuite,
+  upsertNetSuiteCustomer,
 } from "../services/netsuite.service.js"; // Adjust path as needed
 // Assuming you have these utility functions similar to the product sync
 // import { mapNetSuiteCustomerToHubSpot } from "../mapCustomerFields.js";
@@ -146,7 +149,7 @@ async function handleHubspotContactWebhooks(next, req, res, err) {
   try {
     await processHSToNetsuite(req.body, "contact");
   } catch (error) {
-    console.error(`❌ [WEBHOOK] Fatal error syncing Customer ${customerId}:`, {
+    logger.error(`❌ [WEBHOOK] Fatal error syncing Customer ${customerId}:`, {
       httpStatus: error?.status,
       response: error?.response?.data,
       method: error?.method,
@@ -186,7 +189,38 @@ async function handleHubspotCompanyWebhooks(next, req, res, err) {
   }
 }
 
+async function test() {
+  try {
+    const company = await searchInHubspot("companies", "sourceid", "7055");
+
+    logger.info(`Search Result: ${JSON.stringify(company, null, 2)}`);
+
+    // search in netsuite
+
+    const customer = await fetchCustomerById("7055");
+
+    const payload = companyMappingNSToHS(customer);
+
+    logger.info(`Payload ${JSON.stringify(payload, null, 2)}`);
+
+    // Upsert in netsuite upsertNetSuiteCustomer
+    const upsert = await upsertNetSuiteCustomer(payload, customer?.id);
+
+    logger.info(`Upsert Result: ${JSON.stringify(upsert, null, 2)}`);
+  } catch (error) {
+    logger.error(`Error In Testing`, {
+      httpStatus: error?.status,
+      response: error?.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error?.message,
+      stack: error?.stack || error,
+    });
+  }
+}
+
 export {
+  test,
   handleNetsuiteWebhooks,
   handleHubspotContactWebhooks,
   handleHubspotCompanyWebhooks,
