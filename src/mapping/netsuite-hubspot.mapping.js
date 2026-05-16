@@ -124,10 +124,16 @@ function contactMappingNSToHS(sourceData) {
     company: sourceData?.companyname,
 
     // --- Email Fields ---
-    email: sourceData?.email,
-    alt_email: isValidEmail(sourceData?.custentity_sp_alt_email),
-    alt_email_2: isValidEmail(sourceData?.custentity34),
-    alt_email_3: isValidEmail(sourceData?.custentity35),
+    email: isValidEmail(sourceData?.email) ? sourceData?.email : null, // Primary email (must be valid)
+    alt_email: isValidEmail(sourceData?.custentity_sp_alt_email)
+      ? sourceData?.custentity_sp_alt_email
+      : null,
+    alt_email_2: isValidEmail(sourceData?.custentity34)
+      ? sourceData?.custentity34
+      : null,
+    alt_email_3: isValidEmail(sourceData?.custentity35)
+      ? sourceData?.custentity35
+      : null,
 
     // --- Phone Fields ---
     phone: sourceData?.phone,
@@ -215,8 +221,8 @@ function companyMappingNSToHS(sourceData) {
     // Note: HubSpot Company object does NOT have a standard 'email' property.
     // The following fields must exist as custom company properties in HS.
     alt_email: sourceData?.custentity_sp_alt_email,
-    alt_email_2: sourceData?.custentity34,
-    alt_email_3: sourceData?.custentity35,
+    // alt_email_2: sourceData?.custentity34,
+    // alt_email_3: sourceData?.custentity35,
 
     // ========== Phone Fields ==========
     phone: sourceData?.phone,
@@ -242,9 +248,9 @@ function companyMappingNSToHS(sourceData) {
     skid_loader_make: sourceData?.custentity4,
     brand__model: sourceData?.custentity5,
     lead_ad_prop1: sourceData?.custentity_sp_skid_steer_make, // Skid Steer Make
-    lead_ad_prop2: sourceData?.custentity_sp_skid_steer_model, // Skid Steer Model
+    // lead_ad_prop2: sourceData?.custentity_sp_skid_steer_model, // Skid Steer Model
     machine_type: sourceData?.custentity29,
-    attachments_of_interest: sourceData?.custentity18,
+    // attachments_of_interest: sourceData?.custentity18,
     current_attachments: sourceData?.custentity27,
 
     // ========== Sales & Ownership ==========
@@ -253,7 +259,7 @@ function companyMappingNSToHS(sourceData) {
 
     // ========== Status & Lifecycle ==========
     lifecyclestage: mapCompanyLifecyclestage(sourceData?.entitystatus),
-    hs_lead_status: mapCompanyLeadStatus(sourceData?.stage),
+    // hs_lead_status: mapCompanyLeadStatus(sourceData?.stage),
     closedate: toHubSpotUnixMs(sourceData?.dateclosed),
 
     // ========== Lead Source & Marketing ==========

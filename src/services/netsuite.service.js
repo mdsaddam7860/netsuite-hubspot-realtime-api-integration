@@ -1,5 +1,5 @@
 // --------------------Local Imports --------------------------
-import { logger } from "../index.js";
+import { companyProperties, contactProperties, logger } from "../index.js";
 
 // -----------------------Config Imports-----------------------
 import { getNetsuiteClient } from "../configs/netsuite.config.js";
@@ -222,22 +222,14 @@ async function upsertInvoiceInNetsuite(
   }
 }
 
-async function* fetchAllActiveCustomers() {
-  // The query we discussed earlier
-  const query = `
-        SELECT id, companyname, firstname, lastname, email, phone, isperson 
-        FROM customer 
-        WHERE isinactive = 'F'
-    `;
-
-  let allCustomers = [];
+async function* netsuiteGeneratorFunction(query, limit = 10, offset = 0) {
+  let allRecords = [];
   let hasMore = true;
-  let offset = 0;
   let pageCount = 0;
   let totalProcessed = 0;
-  const limit = 100; // Match the limit in your wrapper
 
   logger.info("Starting NetSuite customer extraction...");
+  const startTime = Date.now();
 
   try {
     while (hasMore) {
@@ -247,14 +239,15 @@ async function* fetchAllActiveCustomers() {
 
       // NetSuite returns the rows inside the 'items' array
       const records = response.items || [];
-      // allCustomers.push(...records);
+      // allRecords.push(...records);
       totalProcessed += records.length;
 
       // logger.info(
       //   `Fetched ${records.length} records... (Total: ${
-      //     allCustomers.length
-      //   }) | ${JSON.stringify(allCustomers[allCustomers.length - 1], null, 2)}`
+      //     allRecords.length
+      //   }) | ${JSON.stringify(allRecords[allRecords.length - 1], null, 2)}`
       // );
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
 
       yield {
         records,
@@ -277,13 +270,161 @@ async function* fetchAllActiveCustomers() {
     }
 
     logger.info(
+      `Extraction complete. Total active customers: ${allRecords.length}`
+    );
+
+    // TODO: Pass allCustomers array to your HubSpot mapping function
+    // return allRecords;
+  } catch (error) {
+    logger.error("Failed to execute SuiteQL:", {
+      status: error?.status,
+      response: error.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error.message,
+      stack: error?.stack || error,
+    });
+  }
+}
+
+/**
+ * Generically fetches records from NetSuite using SuiteQL with pagination.
+ * Yields records page-by-page to keep memory usage low.
+ *
+ * @param {string} query - The SuiteQL query string.
+ * @param {Object} [options] - Optional configurations.
+ * @param {number} [options.limit=100] - Number of records to fetch per page.
+ * @param {Object} [options.logger=console] - Logger instance.
+ * @returns {AsyncGenerator<{records: Array, stats: Object}>}
+ */
+async function* fetchSuiteQLPaged(query, options = {}) {
+  const limit = options.limit || 100;
+  const logger = options.logger || console;
+
+  let hasMore = true;
+  let offset = 0;
+  let pageCount = 0;
+  let totalProcessed = 0;
+
+  // Track start time for the throughput stats
+  const startTime = Date.now();
+
+  logger.info("Starting NetSuite data extraction via generic SuiteQL pager...");
+
+  try {
+    while (hasMore) {
+      pageCount++;
+
+      // Execute the query using your existing wrapper
+      const response = await runSuiteQL(query, { limit, offset });
+
+      // Handle cases where response or items might be missing safely
+      const records = response?.items || [];
+      totalProcessed += records.length;
+
+      // Calculate elapsed time for records-per-second metric
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+
+      yield {
+        records,
+        stats: {
+          page: pageCount,
+          totalProcessed,
+          recordsPerSecond:
+            elapsedSeconds > 0
+              ? (totalProcessed / elapsedSeconds).toFixed(2)
+              : "0.00",
+          elapsedSeconds: elapsedSeconds.toFixed(1),
+        },
+      };
+
+      // Check if NetSuite indicates there are more pages
+      hasMore = !!response?.hasMore;
+
+      if (hasMore) {
+        offset += limit;
+      }
+    }
+
+    logger.info(
+      `Extraction complete. Total records processed: ${totalProcessed}`
+    );
+  } catch (error) {
+    logger.error("Failed to execute generic SuiteQL paging:", {
+      status: error?.status,
+      response: error.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error.message,
+      stack: error?.stack || error,
+    });
+    throw error; // Re-throw so the calling function knows something went wrong
+  }
+}
+async function fetchAllActiveCustomers(query) {
+  let allCustomers = [];
+  let hasMore = true;
+  let offset = 0;
+  let pageCount = 0;
+  let totalProcessed = 0;
+  const limit = 1; // Match the limit in your wrapper
+
+  logger.info("Starting NetSuite customer extraction...");
+
+  try {
+    while (hasMore) {
+      pageCount++;
+      // Call your wrapper
+      const response = await runSuiteQL(query, { limit, offset });
+
+      // NetSuite returns the rows inside the 'items' array
+      const records = response.items || [];
+      allCustomers.push(...records);
+
+      return allCustomers; // TODO remove after testing
+      totalProcessed += records.length;
+
+      // logger.info(
+      //   `Fetched ${records.length} records... (Total: ${
+      //     allCustomers.length
+      //   }) | ${JSON.stringify(allCustomers[allCustomers.length - 1], null, 2)}`
+      // );
+
+      // yield {
+      //   records,
+      //   stats: {
+      //     page: pageCount,
+      //     totalProcessed,
+      //     recordsPerSecond:
+      //       elapsedSeconds > 0
+      //         ? (totalProcessed / elapsedSeconds).toFixed(2)
+      //         : "0.00",
+      //   },
+      // };
+
+      // Check if there is another page
+      hasMore = response.hasMore;
+
+      if (hasMore) {
+        offset += limit;
+      }
+    }
+
+    logger.info(
       `Extraction complete. Total active customers: ${allCustomers.length}`
     );
 
     // TODO: Pass allCustomers array to your HubSpot mapping function
     return allCustomers;
   } catch (error) {
-    logger.error("Failed to execute SuiteQL:", error.message);
+    logger.error("Failed to execute SuiteQL:", {
+      status: error?.status,
+      response: error.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error.message,
+      stack: error?.stack || error,
+    });
   }
 }
 
@@ -391,8 +532,9 @@ async function fetchCustomer(customKey, customValue) {
     SELECT *
     FROM customer 
     WHERE ${customKey} = '${customValue}' 
-      AND isinactive = 'F'
-  `;
+      AND isPerson = 'F'
+    `;
+  // -- AND isinactive = 'F'
 
   // logger.info(`Fetching NetSuite customer with ID: ${customerId}...`);
 
@@ -408,7 +550,7 @@ async function fetchCustomer(customKey, customValue) {
       return null;
     }
 
-    const customer = records[0];
+    // const customer = records[0];
     logger.info(
       `Successfully fetched customer: ${JSON.stringify(
         response.items,
@@ -417,7 +559,7 @@ async function fetchCustomer(customKey, customValue) {
       )}`
     );
 
-    return customer;
+    return records;
   } catch (error) {
     logger.error(` Failed to fetch customer :`, {
       status: error?.status,
@@ -607,48 +749,77 @@ async function processHSToNetsuite(sourceData, type) {
 
     // check type
     if (type === "contact" && sourceData?.id) {
-      const hs_contact = await hs_client.contacts.get(sourceData.id);
-      let netsuiteId = null;
-      if (hs_contact && hs_contact?.properties?.sourceid) {
-        // TODO , Change field name to match the one you are using in HubSpot to store the NetSuite internal ID. This is crucial for the upsert logic to work correctly.
-        const ns_customer = await fetchCustomerById(
-          hs_contact?.properties?.sourceid
-        );
-        netsuiteId = ns_customer?.id;
+      const hs_contact = await hs_client.contacts.getContact(
+        sourceData.id,
+        contactProperties()
+      );
+
+      console.log("Contact", hs_contact);
+      let sourceId = null;
+      if (hs_contact) {
+        sourceId = hs_contact?.properties?.sourceid;
       }
 
       const payload = mapToNetSuitePerson(hs_contact?.properties);
 
+      console.log("Payload", payload);
+
       // Insert as Contact in NetSuite
-      const netsuiteCustomer = await upsertNetSuiteCustomer(
-        payload,
-        netsuiteId
-      );
+      const netsuiteCustomer = await upsertNetSuiteCustomer(payload, sourceId);
       logger.info(
         `NetSuite Customer: ${JSON.stringify(netsuiteCustomer, null, 2)}`
       );
-    } else if (type === "company" && sourceData?.id) {
-      const hs_company = await hs_client.companies.get(sourceData?.id);
 
-      let netsuiteId = null;
-      if (hs_company && hs_company?.properties?.sourceid) {
-        // TODO , Change field name to match the one you are using in HubSpot to store the NetSuite internal ID. This is crucial for the upsert logic to work correctly.
-        const ns_customer = await fetchCustomerById(
-          hs_contact?.properties?.sourceid
+      if (!sourceId && netsuiteCustomer?.netsuiteId) {
+        // Update Contact
+        const HSContactUpdate = await hs_client.contacts.updateContact(
+          sourceData.id,
+          {
+            // properties: {
+            sourceid: netsuiteCustomer.netsuiteId,
+            // },
+          }
         );
-        netsuiteId = ns_customer?.id;
+
+        logger.info(
+          `Hubspot Contact Updated Successfully: ${JSON.stringify(
+            HSContactUpdate,
+            null,
+            2
+          )}`
+        );
+      }
+    } else if (type === "company" && sourceData?.id) {
+      const hs_company = await hs_client.companies.getCompany(
+        sourceData?.id,
+        companyProperties()
+      );
+
+      console.log("hs_company", hs_company);
+
+      let sourceId = null;
+      if (hs_company) {
+        sourceId = hs_company?.properties?.sourceid;
       }
 
-      const payload = mapToNetSuiteCompany(hs_contact?.properties);
+      const payload = mapToNetSuiteCompany(hs_company?.properties);
+
+      console.log("payload", payload);
 
       // Insert as Contact in NetSuite
-      const netsuiteCustomer = await upsertNetSuiteCustomer(
-        payload,
-        netsuiteId
-      );
+      const netsuiteCustomer = await upsertNetSuiteCustomer(payload, sourceId);
       logger.info(
         `NetSuite Customer: ${JSON.stringify(netsuiteCustomer, null, 2)}`
       );
+
+      if (!sourceId && netsuiteCustomer?.netsuiteId) {
+        // Update Contact
+        await hs_client.companies.updateCompany(sourceData.id, {
+          // properties: {
+          sourceid: netsuiteCustomer.netsuiteId,
+          // },
+        });
+      }
     }
   } catch (error) {
     logger.error(`Error processing customers:processHSToNetsuite`, {
@@ -661,6 +832,162 @@ async function processHSToNetsuite(sourceData, type) {
     });
   }
 }
+
+async function sync_netsuite_customers_to_hubspot_companies_and_contacts() {
+  try {
+    // const query = `SELECT *
+    // FROM customer
+    // WHERE isinactive = 'F'
+    //   AND lastmodifieddate > TO_DATE('2026-05-14', 'YYYY-MM-DD')`;
+
+    /*Errors
+
+
+    -- c.lasttsaledate, NetSuite error 400: {"type":"https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.1","title":"Bad Request","status":4
+
+
+    -- c.custentity_skidpro_carrier_machineA24:D24
+     NetSuite error 400: {"type":"https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.1","title":"Bad Request","status":400,"o:errorDetails":[{"detail":"Invalid search query. Detailed unprocessed description follows. Invalid search type: Email.","o:errorQueryParam":"q","o:errorCode":"INVALID_PARAMETER"}]}
+
+    */
+
+    const targetDate = "2026-05-10"; // Can be calculated programmatically
+
+    const query = `
+    SELECT 
+        -- Core Identification
+        c.id, 
+        c.entityid,
+        c.companyname, 
+        c.firstname, 
+        c.lastname, 
+        c.email, 
+        c.phone, 
+        c.mobilephone,
+        c.isperson,
+        c.isinactive,
+        c.custentity_sp_alt_email,
+        c.custentity31,
+        c.custentity32,
+        c.custentity33,
+        c.custentity34,
+        c.custentity35,
+
+        -- Equipment & Machine Info
+        -- c.custentity_skidpro_carrier_machineA24:D24
+        c.custentity16,
+        c.custentity_skidpro_carrier3,
+        c.custentity_skidpro_carrier4,
+        c.custentity4,
+        c.custentity5,
+        c.custentity_sp_skid_steer_model,
+        c.custentity_sp_skid_steer_make,
+        c.custentity29,
+        c.custentity18,
+        c.custentity27,
+        
+        -- Sales & Ownership
+        BUILTIN.DF(c.salesrep) AS salesrep_name,
+        c.salesrep AS salesrep_id,
+        
+        -- Verified Custom Fields (Found in JSON)
+        c.custentity2,
+        c.custentity11,
+        c.custentity36,
+        c.custentity_date_lsa,
+        c.custentity_acs_processed,
+      
+        -- Status & Lifecycle (Verified from JSON) Issue is here
+        c.entitystatus,
+        c.stage,
+        c.lastmodifieddate,
+        c.dateclosed,
+        c.firstsaledate,
+        
+
+
+        -- Lead Source & Marketing
+        c.custentity1,
+        c.custentity2,
+        c.custentity28,
+       
+        
+        -- Communication Preferences & Financial
+        c.custentity11,
+        c.unsubscribe,
+        c.custentity36,
+        c.taxable,
+
+
+        -- Sales Activity and Engagement
+        c.custentity_date_lsa,
+        
+        -- Address Fields (Via Joins)
+        bill_addr.addr1 AS billing_address_line_1,
+        bill_addr.addr2 AS billing_address_line_2,
+        bill_addr.city AS billing_city,
+        bill_addr.state AS billing_state,
+        bill_addr.zip AS billing_zip,
+        bill_addr.country AS billing_country,
+        ship_addr.addr1 AS shipping_address_line_1,
+        ship_addr.addr2 AS shipping_address_line_2,
+        ship_addr.city AS shipping_city,
+        ship_addr.state AS shipping_state,
+        ship_addr.zip AS shipping_zip,
+        ship_addr.country AS shipping_country
+    FROM customer c
+    LEFT JOIN customeraddressbookentityaddress bill_addr 
+        ON c.defaultbillingaddress = bill_addr.nkey
+    LEFT JOIN customeraddressbookentityaddress ship_addr 
+        ON c.defaultshippingaddress = ship_addr.nkey
+    WHERE c.isinactive = 'F' 
+      AND c.lastmodifieddate > TO_DATE('${targetDate}', 'YYYY-MM-DD')
+      AND isperson = 'F'
+`;
+
+    const customers = await fetchAllActiveCustomers(query);
+
+    await processBatchOfCustomers(customers);
+    return;
+
+    const customerStream = netsuiteGeneratorFunction(query);
+
+    for await (const { records, stats } of customerStream) {
+      try {
+        console.log("records", records[0]);
+        logger.info(`Records ${JSON.stringify(records, null, 2)}`);
+        // return;
+
+        await processBatchOfCustomers(records); // Implement this function to handle the batch processing logic
+        logger.info(`[Netsuite-Hubspot Progress] `, {
+          total: stats.total,
+          processed: stats.processed,
+          remaining: stats.remaining,
+        });
+      } catch (error) {
+        logger.error(`Error in syncing netsuite customers to hubspot:`, {
+          status: error?.status,
+          response: error.response?.data,
+          method: error?.method,
+          url: error?.config?.url,
+          message: error.message,
+          stack: error?.stack || error,
+        });
+      }
+    }
+  } catch (error) {
+    logger.error(`Error in syncing netsuite customers to hubspot:`, {
+      status: error?.status,
+      response: error.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error.message,
+      stack: error?.stack || error,
+    });
+  }
+}
+// async function sync_netsuite_tasks_to_hubspot_tasks()
+// async function sync_netsuite_phonecalls_to_hubspot_phonecalls()
 
 export {
   fetchFromNetsuite,
@@ -675,4 +1002,7 @@ export {
   syncNetsuiteInvoiceToHubspot,
   syncNetsuiteCustomerToHubspot,
   createNetSuiteInvoice,
+
+  // ----------------------[Main Orchestration Functions]---------------------- //
+  sync_netsuite_customers_to_hubspot_companies_and_contacts,
 };

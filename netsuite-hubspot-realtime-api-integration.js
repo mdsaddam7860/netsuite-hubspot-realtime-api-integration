@@ -1,6 +1,6 @@
 import "./bootstrap.js";
 import { app } from "./src/app.js";
-import { logger } from "./src/index.js";
+import { companyProperties, logger } from "./src/index.js";
 import { getHubspotClient } from "./src/configs/hubspot.config.js";
 import { getNetsuiteClient } from "./src/configs/netsuite.config.js";
 import {
@@ -10,8 +10,11 @@ import {
   fetchCustomer,
   fetchObjectFromNetsuite,
   fetchFromNetsuite,
+  processHSToNetsuite,
+  sync_netsuite_customers_to_hubspot_companies_and_contacts,
 } from "./src/services/netsuite.service.js";
 import {
+  searchInHubspot,
   upsertCompanyInHubspot,
   upsertContactInHubspot,
 } from "./src/services/hubspot.service.js";
@@ -35,13 +38,22 @@ const PORT = process.env.PORT || 5000;
 
 serverInit();
 
+// fetchCustomer("companyname", "Mason Construction");
+
+sync_netsuite_customers_to_hubspot_companies_and_contacts();
+// processHSToNetsuite({ id: "221712997980" }, "contact");
+
+// const properties = companyProperties();
+
+// searchInHubspot("companies", "sourceid", "5205", properties);
+
 const query = `SELECT *
 FROM 
 Note 
 WHERE 
 id > '1'`;
 
-fetchFromNetsuite(query, 1, 0);
+// fetchFromNetsuite(query, 1, 0);
 
 // fetchCustomer("email", "dukelab1@msn.com");
 // fetchObjectFromNetsuite("transaction_address ", "id", "427140");

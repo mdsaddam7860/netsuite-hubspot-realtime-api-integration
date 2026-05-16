@@ -1,10 +1,10 @@
 // mapping/netsuiteMapper.js
-
+import { logger, isValidEmail } from "../index.js";
 /**
  * Removes undefined, null, or empty string values from an object.
  * Crucial for PATCH requests to avoid clearing existing data in NetSuite.
  */
-function cleanPayload(obj) {
+function cleanProps(obj) {
   return Object.fromEntries(
     Object.entries(obj).filter(
       ([_, v]) => v !== "" && v !== null && v !== undefined
@@ -66,9 +66,9 @@ function mapCompanyLifecyclestage(netsuiteStatus) {
 // Helper function for Company Lead Status mapping
 function mapCompanyLeadStatus(netsuiteStage) {
   const statusMap = {
-    NEW: LEAD,
-    OPEN: PROSPECT, // From your data: stage "PROSPECT"
-    CUSTOMER: CUSTOMER,
+    NEW: "LEAD",
+    OPEN: "PROSPECT", // From your data: stage "PROSPECT"
+    CUSTOMER: "CUSTOMER",
   };
 
   return statusMap[netsuiteStage] || null;
@@ -83,7 +83,7 @@ function mapToNetSuiteCompany(hsData) {
     return null;
   }
 
-  logger.info(`[HubSpot] Company to sync: ${JSON.stringify(hsData, null, 2)}`);
+  // logger.info(`[HubSpot] Company to sync: ${JSON.stringify(hsData, null, 2)}`);
 
   const payload = cleanProps({
     // ========== Core Identity ==========
@@ -134,7 +134,7 @@ function mapToNetSuiteCompany(hsData) {
     // Requires helper functions to convert HS strings back to NS Internal IDs
     entitystatus: mapCompanyLifecyclestage(hsData?.lifecyclestage),
     stage: mapCompanyLeadStatus(hsData?.hs_lead_status),
-    dateclosed: toNSDate(hsData?.closedate), // Convert Unix Ms to NS Date String
+    // dateclosed: toNSDate(hsData?.closedate), // Convert Unix Ms to NS Date String
 
     // ========== Lead Source & Marketing ==========
     custentity1: hsData?.referred_by,
@@ -237,15 +237,23 @@ function mapToNetSuitePerson(hsData) {
   const payload = cleanProps({
     // --- Core Identity ---
     // Note: 'id' is omitted for creation, but required if you are doing an update (Internal ID in NS)
+    subsidiary: { id: 1 },
+    isperson: true,
     firstname: hsData?.firstname,
     lastname: hsData?.lastname,
     companyname: hsData?.company,
 
     // --- Email Fields ---
-    email: hsData?.email,
-    custentity_sp_alt_email: hsData?.alt_email,
-    custentity34: hsData?.alt_email_2,
-    custentity35: hsData?.alt_email_3,
+    email: isValidEmail(hsData?.email) ? hsData?.email : null, // Primary email (must be valid)
+    custentity_sp_alt_email: isValidEmail(hsData?.alt_email)
+      ? hsData?.alt_email
+      : null,
+    custentity34: isValidEmail(hsData?.alt_email_2)
+      ? hsData?.alt_email_2
+      : null,
+    custentity35: isValidEmail(hsData?.alt_email_3)
+      ? hsData?.alt_email_3
+      : null,
 
     // --- Phone Fields ---
     phone: hsData?.phone,
@@ -267,9 +275,9 @@ function mapToNetSuitePerson(hsData) {
     billing_country: hsData?.country,
 
     // --- Equipment & Machine Info ---
-    custentity16: hsData?.carrier_machine_2,
-    custentity_skidpro_carrier3: hsData?.carrier_machine_3,
-    custentity_skidpro_carrier4: hsData?.carrier_machine_4,
+    // custentity16: hsData?.carrier_machine_2,
+    // custentity_skidpro_carrier3: hsData?.carrier_machine_3,
+    // custentity_skidpro_carrier4: hsData?.carrier_machine_4,
     custentity4: hsData?.skid_loader_make,
     custentity5: hsData?.brand__model,
     custentity_sp_skid_steer_make: hsData?.lead_ad_prop1,
@@ -279,23 +287,24 @@ function mapToNetSuitePerson(hsData) {
     custentity29: machineTypeDropDown(hsData?.machine_type),
     custentity18: hsData?.attachments_of_interest,
     custentity27: hsData?.current_attachments,
-    custentity_skidpro_carrier_machine: hsData?.carrier_machine,
+    // custentity_skidpro_carrier_machine: hsData?.carrier_machine,
 
     // --- Lead Source & Marketing ---
     custentity1: hsData?.referred_by,
-    custentity2: ToNSBool(hsData?.referral),
+    // custentity2: ToNSBool(hsData?.referral),
     custentity28: hsData?.competitor_shopping,
 
     // --- Communication Preferences ---
-    unsubscribe: ToNSBool(hsData?.unsubscribe),
-    custentity36: ToNSBool(hsData?.sms),
-    taxable: ToNSBool(hsData?.taxable),
+    unsubscribe: hsData?.unsubscribe,
+    // unsubscribe: ToNSBool(hsData?.unsubscribe),
+    // custentity36: ToNSBool(hsData?.sms),
+    // taxable: ToNSBool(hsData?.taxable),
 
     // --- Sales & Ownership ---
     custentityacs_salesrep: hsData?.sales_rep,
 
     // --- Status & Lifecycle ---
-    dateclosed: toNSDate(hsData?.closedate),
+    // dateclosed: toNSDate(hsData?.closedate),
     entitystatus: lifecyclestage(hsData?.lifecyclestage),
     stage: leadStatusMapping(hsData?.hs_lead_status),
   });

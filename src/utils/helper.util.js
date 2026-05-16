@@ -17,19 +17,66 @@ function currentDate() {
 }
 
 function contactProperties() {
+  // return [
+  //   "email",
+  //   "firstname",
+  //   "lastname",
+  //   "sourceid",
+  //   "city",
+  //   "state",
+  //   "zip",
+  //   "country",
+  //   "website",
+  //   "phone",
+  //   "mobilephone",
+  //   "address",
+  // ];
+
   return [
-    "email",
+    "subsidiaryId",
+    "sourceid",
     "firstname",
     "lastname",
-    "sourceid",
+    "company",
+    "email",
+    "alt_email",
+    "alt_email_2",
+    "alt_email_3",
+    "phone",
+    "mobilephone",
+    "work_phone",
+    "alt_phone_2",
+    "alt_phone_3",
+    "address",
+    "shipping_address",
     "city",
     "state",
     "zip",
-    "country",
+    "fax",
     "website",
-    "phone",
-    "mobilephone",
-    "address",
+    "country",
+    "carrier_machine_2",
+    "carrier_machine_3",
+    "carrier_machine_4",
+    "skid_loader_make",
+    "brand__model",
+    "lead_ad_prop1",
+    "lead_ad_prop2",
+    "machine_type",
+    "attachments_of_interest",
+    "current_attachments",
+    "carrier_machine",
+    "referred_by",
+    "referral",
+    "competitor_shopping",
+    "unsubscribe",
+    "sms",
+    "taxable",
+    "sales_rep",
+    "current_attachments",
+    "closedate",
+    "lifecyclestage",
+    "hs_lead_status",
   ];
 }
 function dealProperties() {
@@ -62,23 +109,63 @@ function dealProperties() {
   ];
 }
 function companyProperties() {
+  // return [
+  //   "sourceid",
+  //   "about_us",
+  //   "city",
+  //   "domain",
+  //   "name",
+  //   "country",
+  //   "city",
+  //   "street",
+  //   "state",
+  //   "zip",
+  //   "address",
+  //   "hs_country_code",
+  //   "description",
+  //   "address",
+  //   "zip",
+  //   "address2",
+  // ];
+
   return [
     "sourceid",
-    "about_us",
-    "city",
-    "domain",
     "name",
-    "country",
-    "city",
-    "street",
-    "state",
-    "zip",
+    "domain",
+    "alt_email",
+    "alt_email_2",
+    "alt_email_3",
+    "phone",
+    "mobilephone",
+    "work_phone",
+    "alt_phone_2",
+    "alt_phone_3",
     "address",
-    "hs_country_code",
-    "description",
-    "address",
-    "zip",
     "address2",
+    "city",
+    "state",
+    "country",
+    "zip",
+    "carrier_machine",
+    "carrier_machine_2",
+    "carrier_machine_3",
+    "carrier_machine_4",
+    "skid_loader_make",
+    "brand__model",
+    "lead_ad_prop1",
+    "lead_ad_prop2",
+    "machine_type",
+    "attachments_of_interest",
+    "current_attachments",
+    "sales_rep",
+    "lifecyclestage",
+    "hs_lead_status",
+    "closedate",
+    "referred_by",
+    "referral",
+    "competitor_shopping",
+    "sms",
+    "taxable",
   ];
 }
 
@@ -447,14 +534,15 @@ function shouldUpdateDeal(newPayload, existingDeal) {
  * @param {string} email - The email address to validate.
  * @returns {boolean} - Returns true if valid, false otherwise.
  */
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 function isValidEmail(email) {
-  // Return false if email is null, undefined, or not a string
-  if (!email || typeof email !== "string") {
+  // Return false if email is null, undefined, or not a string, // RFC 5321 limits email to 254 characters
+  if (!email || typeof email !== "string" || email.length > 254) {
     return false;
   }
 
   // Standard regex for email validation
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
   // .trim() ensures accidental leading/trailing spaces don't fail the check
   return emailRegex.test(email.trim());
