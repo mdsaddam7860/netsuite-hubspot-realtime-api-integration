@@ -2,10 +2,10 @@ import fs from "fs";
 import path from "path";
 import { getHubspotClient } from "../configs/hubspot.config.js";
 import { logger } from "../index.js";
-function delta() {
+function delta(numberOfDaysback = 1) {
   const date = new Date();
   // date.setDate(date.getDate() - 2);
-  date.setDate(date.getDate() - 50);
+  date.setDate(date.getDate() - `${numberOfDaysback}`);
 
   const previousDate = date.toISOString().split("T")[0];
   return previousDate;

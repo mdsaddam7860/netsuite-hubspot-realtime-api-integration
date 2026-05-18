@@ -365,7 +365,6 @@ async function* fetchSuiteQLPaged(query, options = {}) {
   }
 }
 
-// TODO , Fix it to return all customers instead of only fetching only one page
 /**
  * Fetch All Customers from NetSuite using SuiteQL with pagination.
  * @param {*} query - This suiteql query will fetch all active customers and it also has a limit and delta filter which will be passed from the caller function.The delta filter wil ensure that only new/updates customer will be fetched.
@@ -427,7 +426,7 @@ async function* fetchAllActiveCustomersPagingWithGenerator(query) {
   let offset = 0;
   let pageCount = 0;
   let totalProcessed = 0;
-  const limit = 1; // Optimized production batch size
+  const limit = 100; // Optimized production batch size
   const startTime = Date.now();
 
   logger.info("Starting NetSuite customer extraction...");
