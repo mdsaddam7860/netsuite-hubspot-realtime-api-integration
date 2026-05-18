@@ -427,7 +427,7 @@ async function* fetchAllActiveCustomersPagingWithGenerator(query) {
   let offset = 0;
   let pageCount = 0;
   let totalProcessed = 0;
-  const limit = 1000; // Optimized production batch size
+  const limit = 1; // Optimized production batch size
   const startTime = Date.now();
 
   logger.info("Starting NetSuite customer extraction...");

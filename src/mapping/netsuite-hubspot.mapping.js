@@ -198,6 +198,10 @@ function contactMappingNSToHS(sourceData) {
     // hs_first_order_closed_date: sourceData?.firstsaledate,
   });
 
+  logger.debug(`[Netsuite] Person : ${JSON.stringify(sourceData)}
+  \n Payload ${JSON.stringify(payload)}
+  `);
+
   return payload;
 }
 
@@ -206,8 +210,6 @@ function companyMappingNSToHS(sourceData) {
     logger.warn(`Company name is empty for company ID: ${sourceData?.id}`);
     return null;
   }
-
-  logger.info(`[Netsuite] Company : ${JSON.stringify(sourceData, null, 2)}`);
 
   const payload = cleanProps({
     // ========== Core Identity ==========
@@ -283,7 +285,9 @@ function companyMappingNSToHS(sourceData) {
     // hs_recent_closed_order_date: toHubSpotUnixMs(sourceData?.lastsaledate),
     // hs_first_order_closed_date: toHubSpotUnixMs(sourceData?.firstsaledate),
   });
-
+  logger.debug(`[Netsuite] Company : ${JSON.stringify(sourceData)}
+  \n Payload ${JSON.stringify(payload)}
+  `);
   return payload;
 }
 

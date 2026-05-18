@@ -5,7 +5,7 @@ import { logger } from "../index.js";
 function delta() {
   const date = new Date();
   // date.setDate(date.getDate() - 2);
-  date.setDate(date.getDate() - 1);
+  date.setDate(date.getDate() - 50);
 
   const previousDate = date.toISOString().split("T")[0];
   return previousDate;

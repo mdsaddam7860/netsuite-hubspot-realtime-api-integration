@@ -408,18 +408,14 @@ function chunkArray(arr, chunkSize) {
   return chunks;
 }
 
-async function processBatchOfContacts(contacts) {
+async function processBatchOfContacts(nsRecords) {
+  const contacts = nsRecords.filter((item) => item?.companyname && item?.email);
   if (!contacts || contacts.length === 0) return;
 
   try {
-    // -------------------------------------------------
-    const hs_client = getHubspotClient();
-
     const contactMap = new Map();
     const contactPayload = [];
-    // const contacts = records.filter((item) => {
-    //   return item?.isperson === "T";
-    // });
+    const hs_client = getHubspotClient();
 
     for (const customer of contacts) {
       const properties = contactMappingNSToHS(customer);
@@ -438,38 +434,45 @@ async function processBatchOfContacts(contacts) {
       }
     }
 
-    logger.info(`contactPayload: ${JSON.stringify(contactPayload, null, 2)}`);
+    // logger.info(`contactPayload: ${JSON.stringify(contactPayload, null, 2)}`);
 
     if (contactPayload.length > 0) {
       const chunks = chunkArray(contactPayload, 100);
-      for (let i = 0; i < chunks.length; i++) {
+      for (const chunk of chunks) {
         const res = await hs_client.contacts.batchUpsert({
-          inputs: chunks[i],
+          inputs: chunk,
         });
-        logger.info(
-          `Contact Upserted Successfully: ${JSON.stringify(
-            res,
-            null,
-            2
-          )} and Payload : ${JSON.stringify(chunks[i], null, 2)}`
+        logger.debug(
+          `Successfully batched upserted ${chunk.length} companies to HubSpot.
+           Result :${JSON.stringify(res)} \n Payload : ${JSON.stringify(chunk)}`
         );
-        res.results.forEach((item) => {
-          contactMap.set(item?.properties?.email, item.id);
-        });
+
+        if (res && res?.results) {
+          for (const item of res.results) {
+            const nsId = item?.properties?.sourceid;
+            if (nsId) {
+              contactMap.set(nsId, item.id);
+            } else {
+              // Fallback to name only if sourceid is missing from response payload
+              logger.debug(
+                `sourceid missing in response, fallback to name for ID ${item.id}`
+              );
+              contactMap.set(item.properties?.email, item.id);
+            }
+          }
+        }
       }
     }
 
-    logger.info(
+    logger.debug(
       `contactMap: ${JSON.stringify(Object.fromEntries(contactMap), null, 2)}`
     );
 
-    const filterContacts = contacts.filter(
-      (item) => item?.companyname && item?.email
-    );
-
-    for (const record of filterContacts) {
+    for (const record of contacts) {
       try {
-        logger.info(`[Netsuite Customer] : ${JSON.stringify(record, null, 2)}`);
+        // logger.debug(
+        //   `[Netsuite Customer] : ${JSON.stringify(record, null, 2)}`
+        // );
         const companiesRes = await searchInHubspot(
           "companies",
           "name",
@@ -482,12 +485,12 @@ async function processBatchOfContacts(contacts) {
           return acc;
         }, []);
 
-        logger.info(`CompanyIds: ${JSON.stringify(companyIds, null, 2)}`);
+        logger.debug(`CompanyIds: ${JSON.stringify(companyIds, null, 2)}`);
 
         if (companyIds.length > 0) {
           const associationPairs = companyIds.map((id) => {
             return {
-              fromId: contactMap.get(record.email),
+              fromId: contactMap.get(record?.id || record?.email),
               toId: id,
             };
           });
@@ -500,7 +503,7 @@ async function processBatchOfContacts(contacts) {
             "HUBSPOT_DEFINED"
           );
 
-          logger.info(
+          logger.debug(
             `Association Result: ${JSON.stringify(associationResult, null, 2)}`
           );
         }
@@ -519,6 +522,10 @@ async function processBatchOfContacts(contacts) {
         );
       }
     }
+
+    logger.info(
+      `Batch processing completed. Consolidated map size: ${contactMap.size}`
+    );
   } catch (error) {
     logger.error(`Error in syncing [Netsuite] Customer as Hubspot Contact`, {
       status: error?.status,
@@ -572,68 +579,86 @@ async function getContactIds(companies, hs_client = getHubspotClient()) {
     });
   }
 }
+// This function is used to retrieve conttact ids from hubspot for each company, using batch read endpoint of hubspot.
+
+// const contactMap = await getContactIds(companies);
+
+// logger.info(
+//   `ContactMap: ${JSON.stringify(Object.fromEntries(contactMap), null, 2)}`
+// );
+
+// Construct Payload for Upsert
 async function processBatchOfCompanies(companies) {
-  if (!companies || companies.length === 0) return;
+  if (!companies || companies.length === 0) return null;
 
   try {
     const companyMap = new Map();
+    // Assuming getHubspotClient cached instance or singleton pattern
     const hs_client = getHubspotClient();
-
-    // This function is used to retrieve conttact ids from hubspot for each company, using batch read endpoint of hubspot.
-
-    // const contactMap = await getContactIds(companies);
-
-    // logger.info(
-    //   `ContactMap: ${JSON.stringify(Object.fromEntries(contactMap), null, 2)}`
-    // );
-
-    // Construct Payload for Upsert
-
     const companyPayload = [];
 
+    // Construct Payload for Upsert
     for (const customer of companies) {
       const properties = companyMappingNSToHS(customer);
 
       if (!properties) {
         logger.warn(
-          `Payload is empty for Record : ${JSON.stringify(customer, null, 2)}`
+          `Payload mapping returned empty for NetSuite Record ID: ${customer.id}`
         );
         continue;
-      } else {
-        companyPayload.push({
-          id: customer.id,
-          idProperty: "sourceid",
-          properties,
-        });
       }
-    }
 
-    // logger.info(`companyPayload: ${JSON.stringify(companyPayload, null, 2)}`);
+      companyPayload.push({
+        id: customer.id, // NetSuite Internal ID
+        idProperty: "sourceid", // Custom unique identifier matching on HubSpot side
+        properties,
+      });
+    }
 
     if (companyPayload.length > 0) {
+      // OPTIMIZATION: Maximize HubSpot's batch capabilities (up to 1000 entries)
       const chunks = chunkArray(companyPayload, 100);
-      for (let i = 0; i < chunks.length; i++) {
+
+      for (const chunk of chunks) {
         const res = await hs_client.companies.batchUpsert({
-          inputs: chunks[i],
+          inputs: chunk,
         });
-        logger.info(
-          `Company Upserted Successfully: ${JSON.stringify(
-            res,
-            null,
-            2
-          )} and Payload : ${JSON.stringify(chunks[i], null, 2)}`
+
+        logger.debug(
+          `Successfully batched upserted ${chunk.length} companies to HubSpot.
+           Result :${JSON.stringify(res)} \n Payload : ${JSON.stringify(chunk)}`
         );
-        res.results.forEach((item) => {
-          companyMap.set(item?.properties?.name, item.id);
-        });
+
+        // Safe Mapping: Tie HubSpot ID back to NetSuite Source ID
+        if (res && res.results) {
+          for (const item of res.results) {
+            const nsId = item.properties?.sourceid;
+            if (nsId) {
+              companyMap.set(nsId, item.id);
+            } else {
+              // Fallback to name only if sourceid is missing from response payload
+              logger.debug(
+                `sourceid missing in response, fallback to name for ID ${item.id}`
+              );
+              companyMap.set(item.properties?.name, item.id);
+            }
+          }
+        }
       }
     }
 
-    logger.info(
-      `companyMap: ${JSON.stringify(Object.fromEntries(companyMap), null, 2)}`
+    logger.debug(
+      `companyMap ${JSON.stringify(Object.fromEntries(companyMap), null, 2)}`
     );
+
+    logger.info(
+      `Batch processing completed. Consolidated map size: ${companyMap.size}`
+    );
+
+    // Return the map so the parent pipeline can use these mappings (e.g., for Contact associations)
+    return companyMap;
   } catch (error) {
-    logger.error(`Error in syncing Customer`, {
+    logger.error(`Error in syncing batch payload to HubSpot Companies:`, {
       status: error?.status,
       response: error.response?.data,
       method: error?.method,
@@ -641,6 +666,9 @@ async function processBatchOfCompanies(companies) {
       headers: error?.config?.headers,
       message: error.message,
     });
+
+    // CRITICAL: Propagate error upward to fail the batch gracefully
+    throw error;
   }
 }
 export {

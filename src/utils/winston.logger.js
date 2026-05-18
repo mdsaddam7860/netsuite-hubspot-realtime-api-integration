@@ -56,20 +56,20 @@ const productionLogger = () => {
     level: "error",
     zippedArchive: true,
     maxSize: "10m",
-    maxFiles: "28d", // keep 28 days of logs
+    maxFiles: "5", // keep 5 files of logs
   });
 
   const Prod = new transports.DailyRotateFile({
     filename: "winstonLogs/Prod-Combined-%DATE%.log",
     datePattern: "YYYY-MM-DD",
-    level: process.env.LOG_LEVEL || "info", // logs info, warn, debug
+    level: process.env.LOG_LEVEL || "debug", // logs info, warn, debug
     zippedArchive: true,
-    maxSize: "10m",
-    maxFiles: "28d",
+    maxSize: "20m",
+    maxFiles: "10",
   });
 
   return createLogger({
-    level: process.env.LOG_LEVEL || "info",
+    level: process.env.LOG_LEVEL || "debug",
     format: combine(customTimestamp, errors({ stack: true })),
     defaultMeta: { service: "Netsuite-Hubspot-RealTime-Integrration" },
     transports: [
@@ -77,7 +77,7 @@ const productionLogger = () => {
       Error, // error-only logs
       new transports.Console({
         format: combine(colorize(), customTimestamp, consoleFormat),
-        level: "info",
+        level: "debug",
         handleExceptions: true,
         handleRejections: true,
       }),
@@ -87,7 +87,7 @@ const productionLogger = () => {
         filename: "winstonLogs/exceptions-%DATE%.log",
         datePattern: "YYYY-MM-DD",
         maxSize: "10m",
-        maxFiles: "14d",
+        maxFiles: "2",
         zippedArchive: true,
       }),
     ],
@@ -96,7 +96,7 @@ const productionLogger = () => {
         filename: "winstonLogs/rejections-%DATE%.log",
         datePattern: "YYYY-MM-DD",
         maxSize: "10m",
-        maxFiles: "14d",
+        maxFiles: "2",
         zippedArchive: true,
       }),
     ],
@@ -126,8 +126,9 @@ const developementLogger = function () {
     // filename: `winstonLogs/Dev-Combined-%DATE%.log`,
     filename: `winstonLogs/Dev-Combined-${getDate()}.log`,
     format: fileFormat,
-    level: "info",
-    maxsize: 50 * 1024 * 1024, // 5MB
+    level: "debug",
+    maxsize: 20 * 1024 * 1024, // 20MB
+    maxFiles: "10",
     handleExceptions: true,
     handleRejections: true,
   });
@@ -180,44 +181,5 @@ const logger =
   process.env.NODE_ENV === "production"
     ? productionLogger()
     : developementLogger();
-// : createLogger({
-//     level: "info",
-//     format: combine(customTimestamp, errors({ stack: true })),
-
-//     exceptionHandlers: [
-//       new transports.DailyRotateFile({
-//         filename: "winstonLogs/exceptions-%DATE%.log",
-//         datePattern: "YYYY-MM-DD",
-//         maxSize: "10m",
-//         maxFiles: "14d",
-//         zippedArchive: true,
-//       }),
-//     ],
-
-//     rejectionHandlers: [
-//       new transports.DailyRotateFile({
-//         filename: "winstonLogs/rejections-%DATE%.log",
-//         datePattern: "YYYY-MM-DD",
-//         maxSize: "10m",
-//         maxFiles: "14d",
-//         zippedArchive: true,
-//       }),
-//     ],
-//     transports: [
-//       new transports.Console({
-//         format: combine(colorize(), customTimestamp, consoleFormat),
-//         handleExceptions: true,
-//         handleRejections: true,
-//       }),
-//       new transports.File({
-//         filename: `winstonLogs/development-${getDate()}.log`,
-//         format: fileFormat,
-//         level: "info",
-//         maxsize: 50 * 1024 * 1024, // 5MB
-//         handleExceptions: true,
-//         handleRejections: true,
-//       }),
-//     ],
-//   });
 
 export { logger };
