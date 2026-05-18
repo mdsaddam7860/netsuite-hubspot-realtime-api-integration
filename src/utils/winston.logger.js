@@ -147,25 +147,25 @@ const developementLogger = function () {
     ),
     // defaultMeta: { service: "Netsuite-Hubspot-RealTime-Integrration" },
 
-    exceptionHandlers: [
-      new transports.DailyRotateFile({
-        filename: "winstonLogs/exceptions-%DATE%.log",
-        datePattern: "YYYY-MM-DD",
-        maxSize: "10m",
-        maxFiles: "14d",
-        zippedArchive: true,
-      }),
-    ],
+    // exceptionHandlers: [
+    //   new transports.DailyRotateFile({
+    //     filename: "winstonLogs/exceptions-%DATE%.log",
+    //     datePattern: "YYYY-MM-DD",
+    //     maxSize: "10m",
+    //     maxFiles: "14d",
+    //     zippedArchive: true,
+    //   }),
+    // ],
 
-    rejectionHandlers: [
-      new transports.DailyRotateFile({
-        filename: "winstonLogs/rejections-%DATE%.log",
-        datePattern: "YYYY-MM-DD",
-        maxSize: "10m",
-        maxFiles: "14d",
-        zippedArchive: true,
-      }),
-    ],
+    // rejectionHandlers: [
+    //   new transports.DailyRotateFile({
+    //     filename: "winstonLogs/rejections-%DATE%.log",
+    //     datePattern: "YYYY-MM-DD",
+    //     maxSize: "10m",
+    //     maxFiles: "14d",
+    //     zippedArchive: true,
+    //   }),
+    // ],
     transports: [
       // Error,
       // Combined,
