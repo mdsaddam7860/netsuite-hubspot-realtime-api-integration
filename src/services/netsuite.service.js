@@ -1,5 +1,11 @@
 // --------------------Local Imports --------------------------
-import { companyProperties, contactProperties, logger } from "../index.js";
+import {
+  companyProperties,
+  contactProperties,
+  customerQuery,
+  logger,
+  delta,
+} from "../index.js";
 
 // -----------------------Config Imports-----------------------
 import { getNetsuiteClient } from "../configs/netsuite.config.js";
@@ -12,7 +18,8 @@ import { runSuiteQL } from "../services/suiteql.js"; // Update with your actual 
 import { oauthRequest } from "./auth/netsuiteOAuthClient.js";
 // -----------------------Hubspot Imports-----------------------
 import {
-  processBatchOfCustomers,
+  processBatchOfContacts,
+  processBatchOfCompanies,
   upsertCompanyInHubspot,
   upsertContactInHubspot,
 } from "./hubspot.service.js";
@@ -178,10 +185,6 @@ async function createNetSuiteInvoice(payload) {
     throw error;
   }
 }
-
-// Example Usage:
-
-// createNetSuiteInvoice(myInvoice);
 
 async function upsertInvoiceInNetsuite(
   record,
@@ -361,6 +364,13 @@ async function* fetchSuiteQLPaged(query, options = {}) {
     throw error; // Re-throw so the calling function knows something went wrong
   }
 }
+
+// TODO , Fix it to return all customers instead of only fetching only one page
+/**
+ * Fetch All Customers from NetSuite using SuiteQL with pagination.
+ * @param {*} query - This suiteql query will fetch all active customers and it also has a limit and delta filter which will be passed from the caller function.The delta filter wil ensure that only new/updates customer will be fetched.
+ * @returns - It returns all active customers.
+ */
 async function fetchAllActiveCustomers(query) {
   let allCustomers = [];
   let hasMore = true;
@@ -369,7 +379,7 @@ async function fetchAllActiveCustomers(query) {
   let totalProcessed = 0;
   const limit = 1; // Match the limit in your wrapper
 
-  logger.info("Starting NetSuite customer extraction...");
+  logger.debug("Starting NetSuite customer extraction...");
 
   try {
     while (hasMore) {
@@ -381,26 +391,7 @@ async function fetchAllActiveCustomers(query) {
       const records = response.items || [];
       allCustomers.push(...records);
 
-      return allCustomers; // TODO remove after testing
       totalProcessed += records.length;
-
-      // logger.info(
-      //   `Fetched ${records.length} records... (Total: ${
-      //     allCustomers.length
-      //   }) | ${JSON.stringify(allCustomers[allCustomers.length - 1], null, 2)}`
-      // );
-
-      // yield {
-      //   records,
-      //   stats: {
-      //     page: pageCount,
-      //     totalProcessed,
-      //     recordsPerSecond:
-      //       elapsedSeconds > 0
-      //         ? (totalProcessed / elapsedSeconds).toFixed(2)
-      //         : "0.00",
-      //   },
-      // };
 
       // Check if there is another page
       hasMore = response.hasMore;
@@ -414,7 +405,6 @@ async function fetchAllActiveCustomers(query) {
       `Extraction complete. Total active customers: ${allCustomers.length}`
     );
 
-    // TODO: Pass allCustomers array to your HubSpot mapping function
     return allCustomers;
   } catch (error) {
     logger.error("Failed to execute SuiteQL:", {
@@ -427,7 +417,84 @@ async function fetchAllActiveCustomers(query) {
     });
   }
 }
+/**
+ * Fetch All Customers from NetSuite using SuiteQL with pagination.
+ * @param {*} query - This suiteql query will fetch all active customers and it also has a limit and delta filter which will be passed from the caller function.The delta filter wil ensure that only new/updates customer will be fetched.
+ * @returns - It returns all active customers.
+ */
+async function* fetchAllActiveCustomersPagingWithGenerator(query) {
+  let hasMore = true;
+  let offset = 0;
+  let pageCount = 0;
+  let totalProcessed = 0;
+  const limit = 1000; // Optimized production batch size
+  const startTime = Date.now();
 
+  logger.info("Starting NetSuite customer extraction...");
+
+  // Define executor options outside the loop to prevent repeated allocations
+  const executorOptions = {
+    name: "fetch-all-active-customers with pagination and generator functionality",
+  };
+
+  try {
+    while (hasMore) {
+      pageCount++;
+
+      // Cleaned up the wrapper invocation using a direct, concise arrow return
+      const response = await netsuiteExecutor(
+        () => runSuiteQL(query, { limit, offset }),
+        executorOptions
+      );
+
+      const records = response.items || [];
+
+      // Safeguard: Drop out early if NetSuite returns an empty data set mid-stream
+      if (records.length === 0) {
+        logger.warn(
+          `Received empty items array on page ${pageCount} at offset ${offset}. Ending stream.`
+        );
+        break;
+      }
+
+      totalProcessed += records.length;
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+
+      yield {
+        records,
+        stats: {
+          page: pageCount,
+          totalProcessed,
+          recordsPerSecond:
+            elapsedSeconds > 0
+              ? (totalProcessed / elapsedSeconds).toFixed(2)
+              : "0.00",
+        },
+      };
+
+      // Defensively normalize boolean values from response metadata
+      hasMore = response.hasMore === true || response.hasMore === "true";
+
+      if (hasMore) {
+        offset += limit;
+      }
+    }
+
+    logger.info(
+      `Extraction complete. Total records extracted: ${totalProcessed} across ${pageCount} pages.`
+    );
+  } catch (error) {
+    logger.error("Failed to execute SuiteQL:", {
+      status: error?.status,
+      response: error.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error.message,
+      stack: error?.stack || error,
+    });
+    throw error;
+  }
+}
 /**
  * Creates or Updates a customer in NetSuite
  * @param {Object} mappedPayload - The JSON payload formatted for NetSuite
@@ -532,15 +599,15 @@ async function fetchCustomer(customKey, customValue) {
     SELECT *
     FROM customer 
     WHERE ${customKey} = '${customValue}' 
-      AND isPerson = 'F'
     `;
   // -- AND isinactive = 'F'
+  // AND isPerson = 'F'
 
   // logger.info(`Fetching NetSuite customer with ID: ${customerId}...`);
 
   try {
     // We only need 1 record, so limit = 1 and offset = 0
-    const response = await runSuiteQL(query, { limit: 1, offset: 0 });
+    const response = await runSuiteQL(query, { limit: 100, offset: 0 });
 
     const records = response.items || [];
 
@@ -703,7 +770,7 @@ async function processCustomers() {
 
     for await (const [records, stats] of customerStream) {
       try {
-        await processBatchOfCustomers(records); // Implement this function to handle the batch processing logic
+        await processBatchOfCompanies(records); // Implement this function to handle the batch processing logic
 
         logger.info(`[Netsuite-Hubspot Progress] `, {
           page: stats.page,
@@ -833,137 +900,29 @@ async function processHSToNetsuite(sourceData, type) {
   }
 }
 
-async function sync_netsuite_customers_to_hubspot_companies_and_contacts() {
+async function sync_netsuite_customers_to_hubspot_companies() {
   try {
-    // const query = `SELECT *
-    // FROM customer
-    // WHERE isinactive = 'F'
-    //   AND lastmodifieddate > TO_DATE('2026-05-14', 'YYYY-MM-DD')`;
+    const previousDate = "2026-05-15";
+    // const previousDate = delta();
 
-    /*Errors
+    const query = customerQuery({ targetDate: previousDate, isPerson: "F" });
 
+    // const customers = await fetchAllActiveCustomers(query);
 
-    -- c.lasttsaledate, NetSuite error 400: {"type":"https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.1","title":"Bad Request","status":4
+    // await processBatchOfCompanies(customers);
 
-
-    -- c.custentity_skidpro_carrier_machineA24:D24
-     NetSuite error 400: {"type":"https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.1","title":"Bad Request","status":400,"o:errorDetails":[{"detail":"Invalid search query. Detailed unprocessed description follows. Invalid search type: Email.","o:errorQueryParam":"q","o:errorCode":"INVALID_PARAMETER"}]}
-
-    */
-
-    const targetDate = "2026-05-10"; // Can be calculated programmatically
-
-    const query = `
-    SELECT 
-        -- Core Identification
-        c.id, 
-        c.entityid,
-        c.companyname, 
-        c.firstname, 
-        c.lastname, 
-        c.email, 
-        c.phone, 
-        c.mobilephone,
-        c.isperson,
-        c.isinactive,
-        c.custentity_sp_alt_email,
-        c.custentity31,
-        c.custentity32,
-        c.custentity33,
-        c.custentity34,
-        c.custentity35,
-
-        -- Equipment & Machine Info
-        -- c.custentity_skidpro_carrier_machineA24:D24
-        c.custentity16,
-        c.custentity_skidpro_carrier3,
-        c.custentity_skidpro_carrier4,
-        c.custentity4,
-        c.custentity5,
-        c.custentity_sp_skid_steer_model,
-        c.custentity_sp_skid_steer_make,
-        c.custentity29,
-        c.custentity18,
-        c.custentity27,
-        
-        -- Sales & Ownership
-        BUILTIN.DF(c.salesrep) AS salesrep_name,
-        c.salesrep AS salesrep_id,
-        
-        -- Verified Custom Fields (Found in JSON)
-        c.custentity2,
-        c.custentity11,
-        c.custentity36,
-        c.custentity_date_lsa,
-        c.custentity_acs_processed,
-      
-        -- Status & Lifecycle (Verified from JSON) Issue is here
-        c.entitystatus,
-        c.stage,
-        c.lastmodifieddate,
-        c.dateclosed,
-        c.firstsaledate,
-        
-
-
-        -- Lead Source & Marketing
-        c.custentity1,
-        c.custentity2,
-        c.custentity28,
-       
-        
-        -- Communication Preferences & Financial
-        c.custentity11,
-        c.unsubscribe,
-        c.custentity36,
-        c.taxable,
-
-
-        -- Sales Activity and Engagement
-        c.custentity_date_lsa,
-        
-        -- Address Fields (Via Joins)
-        bill_addr.addr1 AS billing_address_line_1,
-        bill_addr.addr2 AS billing_address_line_2,
-        bill_addr.city AS billing_city,
-        bill_addr.state AS billing_state,
-        bill_addr.zip AS billing_zip,
-        bill_addr.country AS billing_country,
-        ship_addr.addr1 AS shipping_address_line_1,
-        ship_addr.addr2 AS shipping_address_line_2,
-        ship_addr.city AS shipping_city,
-        ship_addr.state AS shipping_state,
-        ship_addr.zip AS shipping_zip,
-        ship_addr.country AS shipping_country
-    FROM customer c
-    LEFT JOIN customeraddressbookentityaddress bill_addr 
-        ON c.defaultbillingaddress = bill_addr.nkey
-    LEFT JOIN customeraddressbookentityaddress ship_addr 
-        ON c.defaultshippingaddress = ship_addr.nkey
-    WHERE c.isinactive = 'F' 
-      AND c.lastmodifieddate > TO_DATE('${targetDate}', 'YYYY-MM-DD')
-      AND isperson = 'F'
-`;
-
-    const customers = await fetchAllActiveCustomers(query);
-
-    await processBatchOfCustomers(customers);
-    return;
-
-    const customerStream = netsuiteGeneratorFunction(query);
+    const customerStream = fetchAllActiveCustomersPagingWithGenerator(query);
 
     for await (const { records, stats } of customerStream) {
       try {
-        console.log("records", records[0]);
-        logger.info(`Records ${JSON.stringify(records, null, 2)}`);
-        // return;
+        await processBatchOfCompanies(records);
 
-        await processBatchOfCustomers(records); // Implement this function to handle the batch processing logic
-        logger.info(`[Netsuite-Hubspot Progress] `, {
-          total: stats.total,
-          processed: stats.processed,
-          remaining: stats.remaining,
-        });
+        logger.info(
+          `[Netsuite-Hubspot Progress] : ${
+            (stats.page, stats.totalProcessed, stats.recordsPerSecond)
+          }`
+        );
+        return; // TODO Remove after testing
       } catch (error) {
         logger.error(`Error in syncing netsuite customers to hubspot:`, {
           status: error?.status,
@@ -977,6 +936,48 @@ async function sync_netsuite_customers_to_hubspot_companies_and_contacts() {
     }
   } catch (error) {
     logger.error(`Error in syncing netsuite customers to hubspot:`, {
+      status: error?.status,
+      response: error.response?.data,
+      method: error?.method,
+      url: error?.config?.url,
+      message: error.message,
+      stack: error?.stack || error,
+    });
+  }
+}
+async function sync_netsuite_customers_to_hubspot_contacts() {
+  try {
+    const previousDate = delta();
+
+    const query = customerQuery({ targetDate: previousDate, isPerson: "T" });
+
+    // const customers = await fetchAllActiveCustomers(query);
+
+    const customerStream = fetchAllActiveCustomersPagingWithGenerator(query);
+
+    for await (const { records, stats } of customerStream) {
+      try {
+        await processBatchOfContacts(records);
+
+        logger.info(
+          `[Netsuite-Hubspot Progress] Person: ${
+            (stats.page, stats.totalProcessed, stats.recordsPerSecond)
+          }`
+        );
+        return; // TODO Remove after testing
+      } catch (error) {
+        logger.error(`Error in syncing netsuite customers to hubspot:`, {
+          status: error?.status,
+          response: error.response?.data,
+          method: error?.method,
+          url: error?.config?.url,
+          message: error.message,
+          stack: error?.stack || error,
+        });
+      }
+    }
+  } catch (error) {
+    logger.error(`Error in syncing netsuite customers to hubspot Contacts:`, {
       status: error?.status,
       response: error.response?.data,
       method: error?.method,
@@ -1004,5 +1005,6 @@ export {
   createNetSuiteInvoice,
 
   // ----------------------[Main Orchestration Functions]---------------------- //
-  sync_netsuite_customers_to_hubspot_companies_and_contacts,
+  sync_netsuite_customers_to_hubspot_companies,
+  sync_netsuite_customers_to_hubspot_contacts,
 };

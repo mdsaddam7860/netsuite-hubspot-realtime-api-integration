@@ -29,9 +29,11 @@ import {
   getLastSyncTime,
   saveLastSyncTime,
   taskClient,
+  customerQuery,
 } from "./utils/helper.util.js";
 
 export {
+  customerQuery,
   isValidEmail,
   shouldUpdateDeal,
   taskProperties,

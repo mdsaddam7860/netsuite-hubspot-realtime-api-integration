@@ -192,10 +192,8 @@ function contactMappingNSToHS(sourceData) {
     lifecyclestage: lifecyclestage(sourceData?.entitystatus),
     hs_lead_status: leadStatusMapping(sourceData?.stage), // TODO Report Mapping Issue, Value Mismatch(Dropdowns)
 
+    last_sales_activity: toHubSpotUnixMs(sourceData?.custentity_date_lsa),
     //  read only properties in hubspot
-    // hs_last_sales_activity_timestamp: toHubSpotUnixMs(
-    //   sourceData?.custentity_date_lsa
-    // ),
     // hs_recent_closed_order_date: sourceData?.lastsaledate,
     // hs_first_order_closed_date: sourceData?.firstsaledate,
   });
@@ -288,16 +286,28 @@ function companyMappingNSToHS(sourceData) {
 
   return payload;
 }
+
+/*!SECTION
+[, , , , , ]
+*/
 function mapCompanyLifecyclestage(netsuiteStatus) {
   const stageMap = {
-    13: "customer", // Customer
-    14: "prospect", // Prospect (from your data: entitystatus "14")
-    1: "lead", // Lead
-    2: "opportunity", // Opportunity
-    3: "customer", // Customer
-    4: "evangelist", // Evangelist
-    5: "other", // Other
-    6: "subscriber", // Subscriber
+    13: "other", // Customer
+    14: "other", // Prospect (from your data: entitystatus "14")
+    1: "219363586", // Lead
+    2: "lead", // Opportunity
+    3: "marketingqualifiedlead", // Customer
+    4: "salesqualifiedlead", // Evangelist
+    5: "opportunity", // Other
+    6: "customer", // Subscriber
+    // 13: "customer", // Customer
+    // 14: "prospect", // Prospect (from your data: entitystatus "14")
+    // 1: "lead", // Lead
+    // 2: "opportunity", // Opportunity
+    // 3: "customer", // Customer
+    // 4: "evangelist", // Evangelist
+    // 5: "other", // Other
+    // 6: "subscriber", // Subscriber
   };
 
   const mapped = stageMap[String(netsuiteStatus)];
