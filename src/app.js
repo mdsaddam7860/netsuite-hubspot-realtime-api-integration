@@ -29,4 +29,4 @@ app.post("webhooks/netsuiteCustomers", handleNetsuiteWebhooks);
 app.post("/hubspot/webhooks/contacts", (req, res) => {}); // handleHubspotContactWebhooks
 app.post("/hubspot/webhooks/companies", (req, res) => {}); // handleHubspotCompanyWebhooks
 
-export { app };
+export default app;

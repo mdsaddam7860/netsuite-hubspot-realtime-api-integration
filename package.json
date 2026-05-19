@@ -12,11 +12,10 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@mohammadsaddam-dev/hubspot-toolkit": "^2.0.4",
+    "@mohammadsaddam-dev/hubspot-toolkit": "^2.2.0",
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.5.0",
     "node-cron": "^4.2.1",
     "oauth-1.0a": "^2.2.6",
     "winston": "^3.19.0",

@@ -16,13 +16,19 @@ export function startSchedulers() {
   // Tip: Change to '*/2 * * * *' to run every 2 minutes while testing!
   cron.schedule(schedulerFreq, async () => {
     logger.info(
-      `\n⏰ [CRON] Triggered hourly batch Product sync: ${new Date().toISOString()}`
+      `\n [CRON] Triggered hourly batch Product sync: ${new Date().toISOString()}`
     );
     try {
       // Run the batch sync incrementally (false = not a full sync)
       await runProductSync(false);
     } catch (error) {
-      logger.error(`[CRON] Product batch sync failed:`, error.message);
+      logger.error(`[CRON] Product batch sync failed:`, {
+        status: error?.status,
+        url: error?.config?.url,
+        message: error.message,
+        method: error?.method,
+        stack: error?.stack || error,
+      });
     }
   });
 }

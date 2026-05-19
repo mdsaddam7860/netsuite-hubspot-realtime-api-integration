@@ -1,15 +1,15 @@
 import "./bootstrap.js";
-import { app } from "./src/app.js";
-import { companyProperties, logger } from "./src/index.js";
+import app from "./src/app.js";
+import fs from "fs";
+import { logger } from "./src/index.js";
 import { getHubspotClient } from "./src/configs/hubspot.config.js";
 import { getNetsuiteClient } from "./src/configs/netsuite.config.js";
 import {
   sync_netsuite_customers_to_hubspot_companies,
   sync_netsuite_customers_to_hubspot_contacts,
 } from "./src/services/netsuite.service.js";
-import { startSchedulers } from "./src/jobs/scheduler.js";
-import fs from "fs";
-import { test } from "./src/controllers/webhookController.js";
+// import { startSchedulers } from "./src/jobs/scheduler.js";
+// import { test } from "./src/controllers/webhookController.js";
 
 // ============================================================================
 // 0. AUTO-CREATE REQUIRED DIRECTORIES
