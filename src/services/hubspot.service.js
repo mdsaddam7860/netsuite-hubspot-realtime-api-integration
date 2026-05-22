@@ -671,6 +671,7 @@ async function processBatchOfCompanies(companies) {
     throw error;
   }
 }
+
 export {
   // ------------------------------------Functions Which are required for Hubspot------------------------
   searchInHubspot,

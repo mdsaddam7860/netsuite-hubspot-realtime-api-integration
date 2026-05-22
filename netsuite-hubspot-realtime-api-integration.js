@@ -5,10 +5,11 @@ import { logger } from "./src/index.js";
 import { getHubspotClient } from "./src/configs/hubspot.config.js";
 import { getNetsuiteClient } from "./src/configs/netsuite.config.js";
 import {
+  fetchFromNetsuite,
   sync_netsuite_customers_to_hubspot_companies,
   sync_netsuite_customers_to_hubspot_contacts,
 } from "./src/services/netsuite.service.js";
-// import { startSchedulers } from "./src/jobs/scheduler.js";
+import { startSchedulers } from "./src/jobs/scheduler.js";
 // import { test } from "./src/controllers/webhookController.js";
 
 // ============================================================================
@@ -24,11 +25,10 @@ requiredDirs.forEach((dir) => {
 });
 
 const PORT = process.env.PORT || 5000;
-
 serverInit();
 
 // sync_netsuite_customers_to_hubspot_contacts();
-sync_netsuite_customers_to_hubspot_companies();
+// sync_netsuite_customers_to_hubspot_companies();
 // processHSToNetsuite({ id: "221712997980" }, "contact");
 
 async function init() {
@@ -70,6 +70,7 @@ function serverInit() {
     });
 
     init(); // Initialize other services and forget about them
+    startSchedulers();
   } catch (error) {
     logger.error("❌ Critical startup failure:", {
       status: error?.status,

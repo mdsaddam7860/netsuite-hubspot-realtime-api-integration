@@ -639,18 +639,7 @@ async function fetchCustomer(customKey, customValue) {
     throw error;
   }
 }
-//   const query = `
-//   SELECT
-//   nkey,
-//   addr1,
-//   addr2,
-//   city,
-//   state,
-//   zip,
-//   country
-// FROM customeraddressbookentityaddress
-// WHERE nkey = '427140'
-// `;
+
 async function fetchObjectFromNetsuite(table, customKey, customValue) {
   if (!customKey || !customValue) {
     logger.warn("field or value is empty");
@@ -739,14 +728,14 @@ async function fetchFromNetsuite(query, limit = 1, offset = 0) {
 
     logger.info(`Resords found: ${JSON.stringify(records, null, 2)}`);
 
-    // const res = records[0];
-    // logger.info(
-    //   `Successfully fetched customer: ${JSON.stringify(
-    //     response.items,
-    //     null,
-    //     2
-    //   )}`
-    // );
+    const res = records[0];
+    logger.info(
+      `Successfully fetched customer: ${JSON.stringify(
+        response.items,
+        null,
+        2
+      )}`
+    );
 
     return response;
   } catch (error) {
@@ -901,8 +890,7 @@ async function processHSToNetsuite(sourceData, type) {
 
 async function sync_netsuite_customers_to_hubspot_companies() {
   try {
-    const previousDate = "2026-05-15";
-    // const previousDate = delta();
+    const previousDate = delta();
 
     const query = customerQuery({ targetDate: previousDate, isPerson: "F" });
 
@@ -988,22 +976,31 @@ async function sync_netsuite_customers_to_hubspot_contacts() {
 }
 // async function sync_netsuite_tasks_to_hubspot_tasks()
 // async function sync_netsuite_phonecalls_to_hubspot_phonecalls()
+async function netsuiteToHubspot() {
+  await sync_netsuite_customers_to_hubspot_companies();
+  await sync_netsuite_customers_to_hubspot_contacts();
+}
 
 export {
-  fetchFromNetsuite,
-  fetchObjectFromNetsuite,
   fetchCustomer,
   processHSToNetsuite,
-  fetchCustomerById,
   processCustomers,
   upsertNetSuiteCustomer,
   fetchAllActiveCustomers,
   netsuiteGenerator,
   syncNetsuiteInvoiceToHubspot,
   syncNetsuiteCustomerToHubspot,
+
+  // ----------------------Stand alone Functions----------------------//
   createNetSuiteInvoice,
+  fetchCustomerById,
+  fetchFromNetsuite,
+  fetchObjectFromNetsuite,
 
   // ----------------------[Main Orchestration Functions]---------------------- //
   sync_netsuite_customers_to_hubspot_companies,
   sync_netsuite_customers_to_hubspot_contacts,
+
+  // ----------------------[Main Orchestration Functions]---------------------- //
+  netsuiteToHubspot,
 };
