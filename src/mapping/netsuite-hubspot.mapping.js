@@ -61,11 +61,14 @@ function leadStatusMapping(sourceData) {
     value = sourceData.trim().toLowerCase();
   }
   const leadStatusMapping = {
-    in_progress: "IN_PROGRESS",
-    new: "NEW",
-    nurture: "Nurture",
-    unqualified: "UNQUALIFIED",
-    qualified: "QUALIFIED",
+    // in_progress: "IN_PROGRESS",
+    // new: "NEW",
+    // nurture: "Nurture",
+    // unqualified: "UNQUALIFIED",
+    // qualified: "QUALIFIED",
+    prospect: "IN_PROGRESS",
+    customer: "QUALIFIED",
+    lead: "NEW",
   };
 
   return leadStatusMapping[value] || null;
@@ -78,13 +81,15 @@ function lifecyclestage(sourceData) {
   }
 
   const lifecyclestageMapping = {
-    219363586: "219363586",
+    // 219363586: "219363586",
+    // marketingqualifiedlead: "marketingqualifiedlead",
+    // salesqualifiedlead: "salesqualifiedlead",
+    // opportunity: "opportunity",
+    // customer: "customer",
+    // other: "other",
+    prospect: "opportunity",
+    customer: "Customer",
     lead: "lead",
-    marketingqualifiedlead: "marketingqualifiedlead",
-    salesqualifiedlead: "salesqualifiedlead",
-    opportunity: "opportunity",
-    customer: "customer",
-    other: "other",
   };
 
   return lifecyclestageMapping[value] || null;
@@ -195,7 +200,7 @@ function contactMappingNSToHS(sourceData) {
     last_sales_activity: toHubSpotUnixMs(sourceData?.custentity_date_lsa),
     //  read only properties in hubspot
     // hs_recent_closed_order_date: sourceData?.lastsaledate,
-    // hs_first_order_closed_date: sourceData?.firstsaledate,
+    // hs_first_order_closed_date: toHubSpotUnixMs(sourceData?.firstsaledate),
   });
 
   logger.debug(`[Netsuite] Person : ${JSON.stringify(sourceData)}
@@ -248,9 +253,9 @@ function companyMappingNSToHS(sourceData) {
     skid_loader_make: sourceData?.custentity4,
     brand__model: sourceData?.custentity5,
     lead_ad_prop1: sourceData?.custentity_sp_skid_steer_make, // Skid Steer Make
-    // lead_ad_prop2: sourceData?.custentity_sp_skid_steer_model, // Skid Steer Model
+    lead_ad_prop2: sourceData?.custentity_sp_skid_steer_model, // Skid Steer Model
     machine_type: sourceData?.custentity29,
-    // attachments_of_interest: sourceData?.custentity18,
+    attachments_of_interest: sourceData?.custentity18,
     current_attachments: sourceData?.custentity27,
 
     // ========== Sales & Ownership ==========
@@ -259,7 +264,7 @@ function companyMappingNSToHS(sourceData) {
 
     // ========== Status & Lifecycle ==========
     lifecyclestage: mapCompanyLifecyclestage(sourceData?.entitystatus),
-    // hs_lead_status: mapCompanyLeadStatus(sourceData?.stage),
+    hs_lead_status: mapCompanyLeadStatus(sourceData?.stage),
     closedate: toHubSpotUnixMs(sourceData?.dateclosed),
 
     // ========== Lead Source & Marketing ==========
@@ -304,6 +309,7 @@ function mapCompanyLifecyclestage(netsuiteStatus) {
     4: "salesqualifiedlead", // Evangelist
     5: "opportunity", // Other
     6: "customer", // Subscriber
+    // -----------------------------------
     // 13: "customer", // Customer
     // 14: "prospect", // Prospect (from your data: entitystatus "14")
     // 1: "lead", // Lead
@@ -312,6 +318,10 @@ function mapCompanyLifecyclestage(netsuiteStatus) {
     // 4: "evangelist", // Evangelist
     // 5: "other", // Other
     // 6: "subscriber", // Subscriber
+    // ------------------------------ New Mapping
+    13: "opportunity",
+    14: "customer",
+    15: "lead",
   };
 
   const mapped = stageMap[String(netsuiteStatus)];
@@ -323,13 +333,21 @@ function mapCompanyLifecyclestage(netsuiteStatus) {
 
 // Helper function for Company Lead Status mapping
 function mapCompanyLeadStatus(netsuiteStage) {
+  let value = null;
+  if (typeof sourceData === "number") value = sourceData;
+  if (typeof sourceData === "string") {
+    value = sourceData.trim().toLowerCase();
+  }
   const statusMap = {
-    LEAD: "NEW",
-    PROSPECT: "OPEN", // From your data: stage "PROSPECT"
-    CUSTOMER: "CUSTOMER",
+    // LEAD: "NEW",
+    // PROSPECT: "OPEN", // From your data: stage "PROSPECT"
+    // CUSTOMER: "CUSTOMER",
+    prospect: "IN_PROGRESS",
+    customer: "OPEN_DEAL",
+    lead: "NEW",
   };
 
-  return statusMap[netsuiteStage] || null;
+  return statusMap[value] || null;
 }
 
 // function contactMappingNSToHS(sourceData) {
@@ -375,3 +393,15 @@ function mapCompanyLeadStatus(netsuiteStage) {
 // }
 
 export { contactMappingNSToHS, companyMappingNSToHS };
+
+/* Mapping Issues 
+"message": "\"hs_first_order_closed_date\" is a read only property; its value cannot be set.",
+        "code": "READ_ONLY_VALUE",
+        "context": {
+          "propertyName": [
+            "hs_first_order_closed_date"
+          ]
+        }
+
+
+*/

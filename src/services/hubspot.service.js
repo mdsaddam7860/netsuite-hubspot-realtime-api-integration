@@ -434,7 +434,7 @@ async function processBatchOfContacts(nsRecords) {
       }
     }
 
-    // logger.info(`contactPayload: ${JSON.stringify(contactPayload, null, 2)}`);
+    // logger.debug(`contactPayload: ${JSON.stringify(contactPayload, null, 2)}`);
 
     if (contactPayload.length > 0) {
       const chunks = chunkArray(contactPayload, 100);
@@ -443,7 +443,7 @@ async function processBatchOfContacts(nsRecords) {
           inputs: chunk,
         });
         logger.debug(
-          `Successfully batched upserted ${chunk.length} companies to HubSpot.
+          `Successfully batched upserted ${chunk.length} contacts to HubSpot.
            Result :${JSON.stringify(res)} \n Payload : ${JSON.stringify(chunk)}`
         );
 

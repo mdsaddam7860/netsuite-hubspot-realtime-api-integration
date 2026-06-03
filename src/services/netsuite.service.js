@@ -909,7 +909,7 @@ async function sync_netsuite_customers_to_hubspot_companies() {
             (stats.page, stats.totalProcessed, stats.recordsPerSecond)
           }`
         );
-        return; // TODO Remove after testing
+        // return; // TODO Remove after testing
       } catch (error) {
         logger.error(`Error in syncing netsuite customers to hubspot:`, {
           status: error?.status,

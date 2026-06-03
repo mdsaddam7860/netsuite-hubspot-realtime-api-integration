@@ -175,11 +175,14 @@ function leadStatusMapping(sourceData) {
     value = sourceData.trim().toLowerCase();
   }
   const leadStatusMapping = {
-    in_progress: "IN_PROGRESS",
-    new: "NEW",
-    nurture: "Nurture",
-    unqualified: "UNQUALIFIED",
-    qualified: "QUALIFIED",
+    // in_progress: "IN_PROGRESS",
+    // new: "NEW",
+    // nurture: "Nurture",
+    // unqualified: "UNQUALIFIED",
+    // qualified: "QUALIFIED",
+    in_progress: "PROSPECT",
+    QUALIFIED: "CUSTOMER",
+    new: "LEAD",
   };
 
   return leadStatusMapping[value] || null;
@@ -192,13 +195,17 @@ function lifecyclestage(sourceData) {
   }
 
   const lifecyclestageMapping = {
-    219363586: "219363586",
-    lead: "lead",
-    marketingqualifiedlead: "marketingqualifiedlead",
-    salesqualifiedlead: "salesqualifiedlead",
-    opportunity: "opportunity",
-    customer: "customer",
-    other: "other",
+    // 219363586: "219363586",
+    // lead: "lead",
+    // marketingqualifiedlead: "marketingqualifiedlead",
+    // salesqualifiedlead: "salesqualifiedlead",
+    // opportunity: "opportunity",
+    // customer: "customer",
+    // other: "other",
+
+    opportunity: prospect,
+    customer: customer,
+    lead: lead,
   };
 
   return lifecyclestageMapping[value] || null;

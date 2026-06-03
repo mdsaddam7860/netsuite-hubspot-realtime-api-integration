@@ -135,6 +135,7 @@ const developementLogger = function () {
 
   const Console = new transports.Console({
     format: combine(colorize(), customTimestamp, consoleFormat),
+    level: "debug",
     handleExceptions: true,
     handleRejections: true,
   });
