@@ -104,14 +104,14 @@ const productionLogger = () => {
 };
 
 const developementLogger = function () {
-  // const Error = new transports.DailyRotateFile({
-  //   filename: "winstonLogs/Dev-Error-%DATE%.log",
-  //   datePattern: "YYYY-MM-DD",
-  //   level: "error",
-  //   zippedArchive: true,
-  //   maxSize: "10m",
-  //   maxFiles: "28d", // keep 28 days of logs
-  // });
+  const Error = new transports.DailyRotateFile({
+    filename: "winstonLogs/Error-%DATE%.log",
+    datePattern: "YYYY-MM-DD",
+    level: "error",
+    zippedArchive: true,
+    maxSize: "10m",
+    maxFiles: "28d", // keep 28 days of logs
+  });
 
   // const Dev = new transports.DailyRotateFile({
   //   filename: "winstonLogs/Dev-Combined-%DATE%.log",
@@ -124,7 +124,7 @@ const developementLogger = function () {
 
   const Dev = new transports.File({
     // filename: `winstonLogs/Dev-Combined-%DATE%.log`,
-    filename: `winstonLogs/Dev-Combined-${getDate()}.log`,
+    filename: `winstonLogs/Combined-${getDate()}.log`,
     format: fileFormat,
     level: "debug",
     maxsize: 20 * 1024 * 1024, // 20MB
@@ -135,7 +135,7 @@ const developementLogger = function () {
 
   const Console = new transports.Console({
     format: combine(colorize(), customTimestamp, consoleFormat),
-    level: "debug",
+    level: "info",
     handleExceptions: true,
     handleRejections: true,
   });
@@ -147,7 +147,7 @@ const developementLogger = function () {
       customTimestamp,
       json() // This ensures the object is stringified for the files
     ),
-    // defaultMeta: { service: "Netsuite-Hubspot-RealTime-Integrration" },
+    // defaultMeta: { service: "Netsuite-Hubspot-Integrration" },
 
     // exceptionHandlers: [
     //   new transports.DailyRotateFile({
@@ -169,7 +169,7 @@ const developementLogger = function () {
     //   }),
     // ],
     transports: [
-      // Error,
+      Error,
       // Combined,
       Console,
       Dev,
