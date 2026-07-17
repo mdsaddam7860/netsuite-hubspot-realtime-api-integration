@@ -1,4 +1,4 @@
-// Transform Netsuite Data to Hubspot
+// This file contains function that transform data from Netsuite to Hubspot.
 // Check for integrity and consistency
 import {
   isValidEmail,
@@ -73,26 +73,24 @@ function leadStatusMapping(sourceData) {
 
   return leadStatusMapping[value] || null;
 }
-function lifecyclestage(sourceData) {
-  let value = null;
-  if (typeof sourceData === "number") value = sourceData;
-  if (typeof sourceData === "string") {
-    value = sourceData.trim().toLowerCase();
-  }
-
-  const lifecyclestageMapping = {
-    // 219363586: "219363586",
-    // marketingqualifiedlead: "marketingqualifiedlead",
-    // salesqualifiedlead: "salesqualifiedlead",
-    // opportunity: "opportunity",
-    // customer: "customer",
-    // other: "other",
-    prospect: "opportunity",
-    customer: "Customer",
-    lead: "lead",
+function lifecyclestage(netsuiteStatus) {
+  const stageMap = {
+    6: "lead",
+    7: "salesqualifiedlead",
+    10: "opportunity",
+    13: "customer",
+    14: "other",
+    15: "customer",
+    16: "other",
   };
 
-  return lifecyclestageMapping[value] || null;
+  const mapped = stageMap[String(netsuiteStatus)];
+
+  if (!mapped && netsuiteStatus) {
+    logger.warn(`Unknown or unmapped company entitystatus: ${netsuiteStatus}`);
+  }
+
+  return mapped || null;
 }
 
 function machineTypeDropDown(sourceData) {
@@ -111,15 +109,15 @@ function machineTypeDropDown(sourceData) {
 }
 
 function contactMappingNSToHS(sourceData) {
-  if (!sourceData?.email) {
-    logger.warn(`Email is empty : ${JSON.stringify(sourceData)}`);
+  if (!sourceData?.email || !isValidEmail(sourceData?.email)) {
+    logger.warn(`Email is Empty or Invalid : ${JSON.stringify(sourceData)}`);
     return null;
   }
 
-  if (!isValidEmail(sourceData?.email)) {
-    logger.warn(`Email is invalid : ${JSON.stringify(sourceData)}`);
-    return null;
-  }
+  // if (!isValidEmail(sourceData?.email)) {
+  //   logger.warn(`Email is invalid : ${JSON.stringify(sourceData)}`);
+  //   return null;
+  // }
 
   const payload = cleanProps({
     // --- Core Identity ---
@@ -161,9 +159,9 @@ function contactMappingNSToHS(sourceData) {
     // --- Equipment & Machine Info ---
 
     // Not exists in Netsuite
-    carrier_machine_2: sourceData?.custentity16,
-    carrier_machine_3: sourceData?.custentity_skidpro_carrier3,
-    carrier_machine_4: sourceData?.custentity_skidpro_carrier4,
+    carrier_machine_2: sourceData?.carrier_machine_2_name,
+    carrier_machine_3: sourceData?.carrier_machine_3_name,
+    carrier_machine_4: sourceData?.carrier_machine_4_name,
     skid_loader_make: sourceData?.custentity4,
     brand__model: sourceData?.custentity5,
     lead_ad_prop1: sourceData?.custentity_sp_skid_steer_make,
@@ -171,8 +169,8 @@ function contactMappingNSToHS(sourceData) {
     // Exists in netsuite
     machine_type: machineTypeDropDown(sourceData?.custentity29),
     attachments_of_interest: sourceData?.custentity18,
-    current_attachments: sourceData?.custentity27, // You already have this, keep it
-    carrier_machine: sourceData?.custentity_skidpro_carrier_machine,
+    current_attachments: sourceData?.custentity27,
+    carrier_machine: sourceData?.carrier_machine_name,
 
     // --- Status & Lifecycle ---
 
@@ -195,7 +193,7 @@ function contactMappingNSToHS(sourceData) {
     current_attachments: sourceData?.custentity27,
     closedate: toHubSpotUnixMs(sourceData?.dateclosed),
     lifecyclestage: lifecyclestage(sourceData?.entitystatus),
-    hs_lead_status: leadStatusMapping(sourceData?.stage), // TODO Report Mapping Issue, Value Mismatch(Dropdowns)
+    hs_lead_status: leadStatusMapping(sourceData?.stage),
 
     last_sales_activity: toHubSpotUnixMs(sourceData?.custentity_date_lsa),
     //  read only properties in hubspot
@@ -246,10 +244,10 @@ function companyMappingNSToHS(sourceData) {
     zip: sourceData?.billing_zip || sourceData?.shipping_zip,
 
     // ========== Equipment & Machine Info ==========
-    carrier_machine: sourceData?.custentity_skidpro_carrier_machine,
-    carrier_machine_2: sourceData?.custentity16,
-    carrier_machine_3: sourceData?.custentity_skidpro_carrier3,
-    carrier_machine_4: sourceData?.custentity_skidpro_carrier4,
+    carrier_machine: sourceData?.carrier_machine_name,
+    carrier_machine_2: sourceData?.carrier_machine_2_name,
+    carrier_machine_3: sourceData?.carrier_machine_3_name,
+    carrier_machine_4: sourceData?.carrier_machine_4_name,
     skid_loader_make: sourceData?.custentity4,
     brand__model: sourceData?.custentity5,
     lead_ad_prop1: sourceData?.custentity_sp_skid_steer_make, // Skid Steer Make
@@ -296,47 +294,57 @@ function companyMappingNSToHS(sourceData) {
   return payload;
 }
 
-/*!SECTION
-[, , , , , ]
-*/
+/**
+ * Maps NetSuite `entitystatus` IDs to HubSpot Company `lifecyclestage` internal names.
+ *
+ * MAPPED STATUSES (NetSuite -> HubSpot):
+ * - 6 (Lead - Unqualified)       -> 'lead'
+ * - 7 (Lead - Qualified)         -> 'salesqualifiedlead'
+ * - 10 (Prospect - Proposal)     -> 'opportunity'
+ * - 13 (Customer - Closed Won)   -> 'customer'
+ * - 15 (Customer - Renewal)      -> 'customer'
+ * - 14 (Prospect - Closed Lost)  -> 'other' (HS lacks a default "Lost Prospect" stage)
+ * - 16 (Customer - Lost)         -> 'other' (HS lacks a default "Churned" stage)
+ *
+ * IGNORED NETSUITE STATUSES & WHY:
+ * - IDs 1, 2, 3, 4, 5, -2: Left out because NetSuite classifies these as "JOB" (projects),
+ *   not standard CRM Companies. Syncing them would corrupt HubSpot company lifecycle stages.
+ * - IDs 8, 9: Left out because they are marked as 'inactive' in NetSuite.
+ *
+ * UNMAPPED HUBSPOT STAGES & WHY:
+ * - '219363586' (Visitor), 'marketingqualifiedlead', 'evangelist': Left alone because
+ *   there is no direct equivalent for these in this specific NetSuite environment.
+ *   HubSpot will likely manage these top-of-funnel or post-sale stages natively.
+ *
+ * @param {string|number} netsuiteStatus - The internal ID of the NetSuite entitystatus
+ * @returns {string|null} - The HubSpot internal value for lifecyclestage, or null if unmapped
+ */
 function mapCompanyLifecyclestage(netsuiteStatus) {
   const stageMap = {
-    13: "other", // Customer
-    14: "other", // Prospect (from your data: entitystatus "14")
-    1: "219363586", // Lead
-    2: "lead", // Opportunity
-    3: "marketingqualifiedlead", // Customer
-    4: "salesqualifiedlead", // Evangelist
-    5: "opportunity", // Other
-    6: "customer", // Subscriber
-    // -----------------------------------
-    // 13: "customer", // Customer
-    // 14: "prospect", // Prospect (from your data: entitystatus "14")
-    // 1: "lead", // Lead
-    // 2: "opportunity", // Opportunity
-    // 3: "customer", // Customer
-    // 4: "evangelist", // Evangelist
-    // 5: "other", // Other
-    // 6: "subscriber", // Subscriber
-    // ------------------------------ New Mapping
-    13: "opportunity",
-    14: "customer",
-    15: "lead",
+    6: "lead",
+    7: "salesqualifiedlead",
+    10: "opportunity",
+    13: "customer",
+    14: "other",
+    15: "customer",
+    16: "other",
   };
 
   const mapped = stageMap[String(netsuiteStatus)];
+
   if (!mapped && netsuiteStatus) {
-    logger.warn(`Unknown company entitystatus: ${netsuiteStatus}`);
+    logger.warn(`Unknown or unmapped company entitystatus: ${netsuiteStatus}`);
   }
+
   return mapped || null;
 }
 
 // Helper function for Company Lead Status mapping
 function mapCompanyLeadStatus(netsuiteStage) {
   let value = null;
-  if (typeof sourceData === "number") value = sourceData;
-  if (typeof sourceData === "string") {
-    value = sourceData.trim().toLowerCase();
+  if (typeof netsuiteStage === "number") value = netsuiteStage;
+  if (typeof netsuiteStage === "string") {
+    value = netsuiteStage.trim().toLowerCase();
   }
   const statusMap = {
     // LEAD: "NEW",
@@ -404,4 +412,123 @@ export { contactMappingNSToHS, companyMappingNSToHS };
         }
 
 
+
+
+
+
+
+        {
+    "links": [],
+    "alcoholrecipienttype": "CONSUMER",
+    "altemail": "ryanrosengren@gctel.net",
+    "altname": "Ryan Rosengren",
+    "altphone": "320-815-3217",
+    "balancesearch": "0",
+    "companyname": "Rosengren Lawn Care & Landscpaing",
+    "consolbalancesearch": "0",
+    "consoldaysoverduesearch": "0",
+    "consoldepositbalancesearch": "0",
+    "consoloverduebalancesearch": "0",
+    "consolunbilledorderssearch": "0",
+    "contactlist": "82085",
+    "creditholdoverride": "AUTO",
+    "currency": "1",
+    "custentity10": "F",
+    "custentity11": "T",
+    "custentity16": "356",
+    "custentity2": "F",
+    "custentity36": "F",
+    "custentity8": "F",
+    "custentity9": "F",
+    "custentity_2663_customer_refund": "F",
+    "custentity_2663_direct_debit": "F",
+    "custentity_atlas_customer_invoice_email": "ryanrosengren@gctel.net",
+    "custentity_atlas_customer_probability": "1",
+    "custentity_atlas_high_impact": "F",
+    "custentity_date_lsa": "11/17/2025",
+    "custentity_link_lsa": "/app/crm/common/note.nl?id=1259201&compid=6762947",
+    "custentity_link_name_lsa": "11/17/2025 Note",
+    "custentity_mw_address_validated_flag": "F",
+    "custentity_naw_trans_need_approval": "F",
+    "custentity_skd_phone_number_lookup": "320-815-3217",
+    "custentity_skidpro_carrier3": "351",
+    "custentity_skidpro_carrier_machine": "362",
+    "custentity_solupay_cust_bypass_surcharge": "F",
+    "custentity_sp_alt_email": "ryanrosengren@gctel.net",
+    "custentity_sp_pipeline_email_1": "ryanrosengren@gctel.net",
+    "custentity_sp_pipeline_home_phone": "320-815-3217",
+    "custentity_sp_pipeline_id": "1037695210",
+    "custentity_sp_pipeline_mobile_phone": "320-815-3217",
+    "custentity_sp_pipeline_phone": "320-815-3217",
+    "custentity_sp_qb_email_address": "ryanrosengren@gctel.net",
+    "custentity_sp_qb_phone": "(320) 815-3217",
+    "custentity_sp_qbid": "6342",
+    "custentity_sp_skid_steer_make": "CAT",
+    "custentity_sp_skid_steer_model": "262-C",
+    "custentity_sp_skid_steer_units": "1",
+    "custentity_versapay_migrate_cc": "F",
+    "custentity_versapay_migrate_status": "F",
+    "custentityemkting_emailundeliverable": "F",
+    "custentityemkting_emailunsubscribed": "F",
+    "dateclosed": "10/29/2022",
+    "datecreated": "10/29/2022",
+    "daysoverduesearch": "0",
+    "defaultallocationstrategy": "-2",
+    "defaultbillingaddress": "725917",
+    "defaultshippingaddress": "594350",
+    "depositbalancesearch": "0",
+    "displaysymbol": "$",
+    "duplicate": "F",
+    "email": "ryanrosengren@gctel.net",
+    "emailpreference": "DEFAULT",
+    "emailtransactions": "F",
+    "entityid": "75094",
+    "entitynumber": "75094",
+    "entitystatus": "13",
+    "entitytitle": "75094 Ryan Rosengren",
+    "externalid": "Q6342",
+    "faxtransactions": "F",
+    "firstname": "Ryan",
+    "firstorderdate": "5/4/2023",
+    "firstsaledate": "4/6/2018",
+    "firstsaleperiod": "75",
+    "fullname": "75094 Ryan Rosengren",
+    "giveaccess": "F",
+    "globalsubscriptionstatus": "2",
+    "id": "82085",
+    "isautogeneratedrepresentingentity": "F",
+    "isbudgetapproved": "F",
+    "isinactive": "F",
+    "isjob": "F",
+    "isperson": "T",
+    "language": "en_US",
+    "lastmodifieddate": "11/17/2025",
+    "lastname": "Rosengren",
+    "lastorderdate": "11/3/2025",
+    "lastsaledate": "11/13/2025",
+    "lastsaleperiod": "272",
+    "monthlyclosing": "31",
+    "oncredithold": "F",
+    "overduebalancesearch": "0",
+    "overridecurrencyformat": "F",
+    "phone": "1 320-815-3217",
+    "printtransactions": "F",
+    "probability": "1",
+    "receivablesaccount": "-10",
+    "salesrep": "98",
+    "searchstage": "Customer",
+    "shipcomplete": "F",
+    "shippingcarrier": "nonups",
+    "stage": "CUSTOMER",
+    "startdate": "4/25/2023",
+    "subsidiary": "1",
+    "symbolplacement": "1",
+    "taxable": "T",
+    "taxexempt": "F",
+    "taxrounding": "OFF",
+    "toplevelparent": "82085",
+    "unbilledorderssearch": "0",
+    "unsubscribe": "T",
+    "weblead": "F"
+  }
 */

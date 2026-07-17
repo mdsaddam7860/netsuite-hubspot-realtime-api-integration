@@ -555,87 +555,99 @@ function customerQuery(arg) {
     return;
   }
   const query = `
-    SELECT 
-        -- Core Identification
-        c.id, 
-        c.entityid,
-        c.companyname, 
-        c.firstname, 
-        c.lastname, 
-        c.email, 
-        c.phone, 
-        c.mobilephone,
-        c.isperson,
-        c.isinactive,
-        c.custentity_sp_alt_email,
-        c.custentity31,
-        c.custentity32,
-        c.custentity33,
-        c.custentity34,
-        c.custentity35,
+    SELECT
+      -- Core Identification
+      c.id,
+      c.entityid,
+      c.companyname,
+      c.firstname,
+      c.lastname,
+      c.email,
+      c.phone,
+      c.mobilephone,
+      c.isperson,
+      c.isinactive,
+      c.custentity_sp_alt_email,
+      c.custentity31,
+      c.custentity32,
+      c.custentity33,
+      c.custentity34,
+      c.custentity35,
 
-        -- Equipment & Machine Info
-        -- c.custentity_skidpro_carrier_machineA24:D24
-        c.custentity16,
-        c.custentity_skidpro_carrier3,
-        c.custentity_skidpro_carrier4,
-        c.custentity4,
-        c.custentity5,
-        c.custentity_sp_skid_steer_model,
-        c.custentity_sp_skid_steer_make,
-        c.custentity29,
-        c.custentity18,
-        c.custentity27,
-        
-        -- Sales & Ownership
-        BUILTIN.DF(c.salesrep) AS salesrep_name,
-        c.salesrep AS salesrep_id,
-        
-        -- Verified Custom Fields (Found in JSON)
-        c.custentity2,
-        c.custentity11,
-        c.custentity36,
-        c.custentity_date_lsa,
-        c.custentity_acs_processed,
-      
-        -- Status & Lifecycle (Verified from JSON) Issue is here
-        c.entitystatus,
-        c.stage,
-        c.lastmodifieddate,
-        c.dateclosed,
-        c.firstsaledate,
-        
+      -- Equipment & Machine Info
+      -- c.custentity_skidpro_carrier_machine,
+      -- c.custentity16,
+      -- c.custentity_skidpro_carrier3,
+      -- c.custentity_skidpro_carrier4,
+      c.custentity4,
+      c.custentity5,
+      c.custentity_sp_skid_steer_model,
+      c.custentity_sp_skid_steer_make,
+      -- c.custentity29,
+      c.custentity18,
+      c.custentity27,
 
+      c.custentity_skidpro_carrier_machine AS carrier_machine_id,
+      BUILTIN.DF(c.custentity_skidpro_carrier_machine) AS carrier_machine_name, -- This will output machine type"
 
-        -- Lead Source & Marketing
-        c.custentity1,
-        c.custentity2,
-        c.custentity28,
-       
-        
-        -- Communication Preferences & Financial
-        c.custentity11,
-        c.unsubscribe,
-        c.custentity36,
-        c.taxable,
+      c.custentity29,
+      BUILTIN.DF(c.custentity29) AS carrier_machine_type, -- This will output machine type"
 
+      c.custentity16 AS carrier_machine_2_id,
+      BUILTIN.DF(c.custentity16) AS carrier_machine_2_name, -- This will output "CAT 257D"
 
-        -- Sales Activity and Engagement
-        c.custentity_date_lsa,
-        
-        -- Address Fields (Via Joins)
-        bill_addr.addr1 AS billing_address_line_1,
-        bill_addr.addr2 AS billing_address_line_2,
-        bill_addr.city AS billing_city,
-        bill_addr.state AS billing_state,
-        bill_addr.zip AS billing_zip,
-        bill_addr.country AS billing_country,
-        ship_addr.addr1 AS shipping_address_line_1,
-        ship_addr.addr2 AS shipping_address_line_2,
-        ship_addr.city AS shipping_city,
-        ship_addr.state AS shipping_state,
-        ship_addr.zip AS shipping_zip,
-        ship_addr.country AS shipping_country
+      c.custentity_skidpro_carrier3 AS carrier_machine_3_id,
+      BUILTIN.DF(c.custentity_skidpro_carrier3) AS carrier_machine_3_name, -- This will output "CAT 249D"
+
+      c.custentity_skidpro_carrier4,
+      BUILTIN.DF(c.custentity_skidpro_carrier4) AS carrier_machine_4_name,
+
+      -- Sales & Ownership
+      BUILTIN.DF(c.salesrep) AS salesrep_name,
+      c.salesrep AS salesrep_id,
+
+      -- Verified Custom Fields (Found in JSON)
+      c.custentity2,
+      c.custentity11,
+      c.custentity36,
+      c.custentity_date_lsa,
+      c.custentity_acs_processed,
+
+      -- Status & Lifecycle (Verified from JSON) Issue is here
+      c.entitystatus,
+      BUILTIN.DF(c.entitystatus) AS ns_status,
+      c.stage,
+      c.lastmodifieddate,
+      c.dateclosed,
+      c.firstsaledate,
+
+      -- Lead Source & Marketing
+      c.custentity1,
+      c.custentity2,
+      c.custentity28,
+
+      -- Communication Preferences & Financial
+      c.custentity11,
+      c.unsubscribe,
+      c.custentity36,
+      c.taxable,
+
+      -- Sales Activity and Engagement
+      c.custentity_date_lsa,
+
+      -- Address Fields (Via Joins)
+      bill_addr.addr1 AS billing_address_line_1,
+      bill_addr.addr2 AS billing_address_line_2,
+      bill_addr.city AS billing_city,
+      bill_addr.state AS billing_state,
+      bill_addr.zip AS billing_zip,
+      bill_addr.country AS billing_country,
+      ship_addr.addr1 AS shipping_address_line_1,
+      ship_addr.addr2 AS shipping_address_line_2,
+      ship_addr.city AS shipping_city,
+      ship_addr.state AS shipping_state,
+      ship_addr.zip AS shipping_zip,
+      ship_addr.country AS shipping_country
     FROM customer c
     LEFT JOIN customeraddressbookentityaddress bill_addr 
         ON c.defaultbillingaddress = bill_addr.nkey

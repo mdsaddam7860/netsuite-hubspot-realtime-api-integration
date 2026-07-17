@@ -434,7 +434,7 @@ async function processBatchOfContacts(nsRecords) {
       }
     }
 
-    // logger.debug(`contactPayload: ${JSON.stringify(contactPayload, null, 2)}`);
+    logger.debug(`contactPayload: ${JSON.stringify(contactPayload, null, 2)}`);
 
     if (contactPayload.length > 0) {
       const chunks = chunkArray(contactPayload, 100);

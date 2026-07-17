@@ -726,7 +726,7 @@ async function fetchFromNetsuite(query, limit = 1, offset = 0) {
       return null;
     }
 
-    logger.info(`Resords found: ${JSON.stringify(records, null, 2)}`);
+    // logger.info(`Resords found: ${JSON.stringify(records, null, 2)}`);
 
     const res = records[0];
     logger.info(

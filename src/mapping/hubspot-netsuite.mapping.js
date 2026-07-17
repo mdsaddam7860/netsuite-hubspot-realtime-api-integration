@@ -44,7 +44,12 @@ function ToNSBool(value) {
 //   return cleanPayload(payload);
 // }
 
-function mapCompanyLifecyclestage(netsuiteStatus) {
+function mapCompanyLifecyclestage(sourceData) {
+  let value = null;
+  if (typeof sourceData === "number") value = sourceData;
+  if (typeof sourceData === "string") {
+    value = sourceData.trim().toLowerCase();
+  }
   const stageMap = {
     customer: 13, // Customer
     prospect: 14, // Prospect (from your data: entitystatus "14")
@@ -56,22 +61,31 @@ function mapCompanyLifecyclestage(netsuiteStatus) {
     subscriber: 6, // Subscriber
   };
 
-  const mapped = stageMap[String(netsuiteStatus)];
-  if (!mapped && netsuiteStatus) {
-    logger.warn(`Unknown company entitystatus: ${netsuiteStatus}`);
+  const mapped = stageMap[String(value)] || null;
+  if (!mapped && sourceData) {
+    logger.warn(`Unknown company entitystatus: ${sourceData}`);
   }
   return mapped || null;
 }
 
 // Helper function for Company Lead Status mapping
-function mapCompanyLeadStatus(netsuiteStage) {
+function mapCompanyLeadStatus(sourceData) {
+  let value = null;
+  if (typeof sourceData === "number") value = sourceData;
+  if (typeof sourceData === "string") {
+    value = sourceData.trim().toLowerCase();
+  }
   const statusMap = {
-    NEW: "LEAD",
-    OPEN: "PROSPECT", // From your data: stage "PROSPECT"
-    CUSTOMER: "CUSTOMER",
+    // NEW: "LEAD",
+    // OPEN: "PROSPECT", // From your data: stage "PROSPECT"
+    // CUSTOMER: "CUSTOMER",
+
+    opportunity: 13,
+    customer: 14,
+    lead: 15,
   };
 
-  return statusMap[netsuiteStage] || null;
+  return statusMap[value] || null;
 }
 function mapToNetSuiteCompany(hsData) {
   // Assuming hsData is a flattened object of HubSpot properties.
@@ -203,9 +217,9 @@ function lifecyclestage(sourceData) {
     // customer: "customer",
     // other: "other",
 
-    opportunity: prospect,
-    customer: customer,
-    lead: lead,
+    opportunity: 13,
+    customer: 14,
+    lead: 15,
   };
 
   return lifecyclestageMapping[value] || null;

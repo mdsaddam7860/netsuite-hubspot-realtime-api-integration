@@ -1,10 +1,11 @@
 import "./bootstrap.js";
 import app from "./src/app.js";
 import fs from "fs";
-import { logger } from "./src/index.js";
+import { customerQuery, logger } from "./src/index.js";
 import { getHubspotClient } from "./src/configs/hubspot.config.js";
 import { getNetsuiteClient } from "./src/configs/netsuite.config.js";
 import {
+  fetchCustomer,
   fetchFromNetsuite,
   sync_netsuite_customers_to_hubspot_companies,
   sync_netsuite_customers_to_hubspot_contacts,
@@ -132,43 +133,322 @@ function serverInit() {
 // processBatchOfContacts([
 //   {
 //     links: [],
-//     billing_address_line_1: "723 S Lasalle St",
-//     billing_city: "Aurora",
+//     billing_address_line_1: "2720 OLD COUNTY ROAD 120 NE",
+//     billing_city: "ALEXANDRIA",
 //     billing_country: "US",
-//     billing_state: "IL",
-//     billing_zip: "60505",
-//     companyname: "Cbc Bricks Inc.",
-//     custentity11: "F",
-//     custentity16: "250",
+//     billing_state: "MN",
+//     billing_zip: "56308",
+//     carrier_machine_2_id: "356",
+//     carrier_machine_2_name: "CAT 257D",
+//     carrier_machine_3_id: "351",
+//     carrier_machine_3_name: "CAT 249D",
+//     carrier_machine_id: "362",
+//     carrier_machine_name: "CAT 262D",
+//     companyname: "Rosengren Lawn Care & Landscpaing",
+//     custentity11: "T",
 //     custentity2: "F",
-//     custentity29: "1",
 //     custentity36: "F",
-//     custentity_acs_processed: "F",
-//     custentity_date_lsa: "6/2/2026",
-//     custentity_skidpro_carrier3: "186",
-//     custentity_sp_alt_email: "bsupplyplus@gmail.com",
-//     custentity_sp_skid_steer_make: "TAX EXEMPT ON FILE",
-//     dateclosed: "10/25/2022",
-//     email: "jessicag@bricksinc.net",
-//     entityid: "51281",
+//     custentity_date_lsa: "11/17/2025",
+//     custentity_sp_alt_email: "ryanrosengren@gctel.net",
+//     custentity_sp_skid_steer_make: "CAT",
+//     custentity_sp_skid_steer_model: "262-C",
+//     dateclosed: "10/29/2022",
+//     email: "ryanrosengren@gctel.net",
+//     entityid: "75094",
 //     entitystatus: "13",
-//     firstname: "Kim",
-//     firstsaledate: "9/15/2021",
-//     id: "56033",
+//     firstname: "Ryan",
+//     firstsaledate: "4/6/2018",
+//     id: "82085",
 //     isinactive: "F",
 //     isperson: "T",
-//     lastmodifieddate: "6/2/2026",
-//     lastname: "Schmitt",
-//     phone: "1 630-730-5164",
-//     salesrep_id: "100",
-//     salesrep_name: "Chris Wessel",
-//     shipping_address_line_1: "723 S Lasalle St",
-//     shipping_city: "Aurora",
+//     lastmodifieddate: "11/17/2025",
+//     lastname: "Rosengren",
+//     phone: "1 320-815-3217",
+//     salesrep_id: "98",
+//     salesrep_name: "Erik Gullickson",
+//     shipping_address_line_1: "807 MCKAY AVE S",
+//     shipping_city: "ALEXANDRIA",
 //     shipping_country: "US",
-//     shipping_state: "IL",
-//     shipping_zip: "60505",
+//     shipping_state: "MN",
+//     shipping_zip: "56308",
 //     stage: "CUSTOMER",
-//     taxable: "F",
+//     taxable: "T",
+//     unsubscribe: "T",
+//   },
+//   // {
+//   //   links: [],
+//   //   billing_address_line_1: "723 S Lasalle St",
+//   //   billing_city: "Aurora",
+//   //   billing_country: "US",
+//   //   billing_state: "IL",
+//   //   billing_zip: "60505",
+//   //   companyname: "Cbc Bricks Inc.",
+//   //   custentity11: "F",
+//   //   custentity16: "250",
+//   //   custentity2: "F",
+//   //   custentity29: "1",
+//   //   custentity36: "F",
+//   //   custentity_acs_processed: "F",
+//   //   custentity_date_lsa: "6/2/2026",
+//   //   custentity_skidpro_carrier3: "186",
+//   //   custentity_sp_alt_email: "bsupplyplus@gmail.com",
+//   //   custentity_sp_skid_steer_make: "TAX EXEMPT ON FILE",
+//   //   dateclosed: "10/25/2022",
+//   //   email: "jessicag@bricksinc.net",
+//   //   entityid: "51281",
+//   //   entitystatus: "13",
+//   //   firstname: "Kim",
+//   //   firstsaledate: "9/15/2021",
+//   //   id: "56033",
+//   //   isinactive: "F",
+//   //   isperson: "T",
+//   //   lastmodifieddate: "6/2/2026",
+//   //   lastname: "Schmitt",
+//   //   phone: "1 630-730-5164",
+//   //   salesrep_id: "100",
+//   //   salesrep_name: "Chris Wessel",
+//   //   shipping_address_line_1: "723 S Lasalle St",
+//   //   shipping_city: "Aurora",
+//   //   shipping_country: "US",
+//   //   shipping_state: "IL",
+//   //   shipping_zip: "60505",
+//   //   stage: "CUSTOMER",
+//   //   taxable: "F",
+//   //   unsubscribe: "T",
+//   // },
+// ]);
+
+// --------------------------------------------------
+// processBatchOfContacts([
+//   {
+//     links: [],
+//     billing_address_line_1: "TBD",
+//     billing_city: "ALEXANDRIA",
+//     billing_country: "US",
+//     billing_state: "MN",
+//     billing_zip: "56308",
+//     companyname: "Upper Deck Construction",
+//     custentity11: "F",
+//     custentity2: "F",
+//     custentity36: "F",
+//     custentity_acs_processed: "F",
+//     custentity_date_lsa: "4/17/2024",
+//     email: "rey.upperdeckconstruction@gmail.com",
+//     entityid: "1288927794",
+//     entitystatus: "10",
+//     firstname: "Rey",
+//     id: "1147194",
+//     isinactive: "F",
+//     isperson: "T",
+//     lastmodifieddate: "7/21/2025",
+//     lastname: "Fuglestad",
+//     phone: "1 320-491-9047",
+//     salesrep_id: "114",
+//     salesrep_name: "Tyson Langlie",
+//     shipping_address_line_1: "807 MCKAY AVE S",
+//     shipping_city: "ALEXANDRIA",
+//     shipping_country: "US",
+//     shipping_state: "MN",
+//     shipping_zip: "56308",
+//     stage: "PROSPECT",
+//     taxable: "T",
 //     unsubscribe: "T",
 //   },
 // ]);
+
+const query = `
+    SELECT
+        -- Core Identification
+        c.id,
+        c.entityid,
+        c.companyname,
+        c.firstname,
+        c.lastname,
+        c.email,
+        c.phone,
+        c.mobilephone,
+        c.isperson,
+        c.isinactive,
+        c.custentity_sp_alt_email,
+        c.custentity31,
+        c.custentity32,
+        c.custentity33,
+        c.custentity34,
+        c.custentity35,
+
+        -- Equipment & Machine Info
+        -- c.custentity_skidpro_carrier_machine,
+        -- c.custentity16,
+        -- c.custentity_skidpro_carrier3,
+        -- c.custentity_skidpro_carrier4,
+        c.custentity4,
+        c.custentity5,
+        c.custentity_sp_skid_steer_model,
+        c.custentity_sp_skid_steer_make,
+        -- c.custentity29,
+        c.custentity18,
+        c.custentity27,
+
+        c.custentity_skidpro_carrier_machine AS carrier_machine_id,
+        BUILTIN.DF(c.custentity_skidpro_carrier_machine) AS carrier_machine_name, -- This will output machine type"
+
+        c.custentity29,
+        BUILTIN.DF(c.custentity29) AS carrier_machine_type, -- This will output machine type"
+
+        c.custentity16 AS carrier_machine_2_id,
+        BUILTIN.DF(c.custentity16) AS carrier_machine_2_name, -- This will output "CAT 257D"
+
+        c.custentity_skidpro_carrier3 AS carrier_machine_3_id,
+        BUILTIN.DF(c.custentity_skidpro_carrier3) AS carrier_machine_3_name, -- This will output "CAT 249D"
+
+        c.custentity_skidpro_carrier4,
+        BUILTIN.DF(c.custentity_skidpro_carrier4) AS carrier_machine_4_name,
+
+        -- Sales & Ownership
+        BUILTIN.DF(c.salesrep) AS salesrep_name,
+        c.salesrep AS salesrep_id,
+
+        -- Verified Custom Fields (Found in JSON)
+        c.custentity2,
+        c.custentity11,
+        c.custentity36,
+        c.custentity_date_lsa,
+        c.custentity_acs_processed,
+
+        -- Status & Lifecycle (Verified from JSON) Issue is here
+        c.entitystatus,
+        BUILTIN.DF(c.entitystatus) AS ns_status,
+        c.stage,
+        c.lastmodifieddate,
+        c.dateclosed,
+        c.firstsaledate,
+
+        -- Lead Source & Marketing
+        c.custentity1,
+        c.custentity2,
+        c.custentity28,
+
+        -- Communication Preferences & Financial
+        c.custentity11,
+        c.unsubscribe,
+        c.custentity36,
+        c.taxable,
+
+        -- Sales Activity and Engagement
+        c.custentity_date_lsa,
+
+        -- Address Fields (Via Joins)
+        bill_addr.addr1 AS billing_address_line_1,
+        bill_addr.addr2 AS billing_address_line_2,
+        bill_addr.city AS billing_city,
+        bill_addr.state AS billing_state,
+        bill_addr.zip AS billing_zip,
+        bill_addr.country AS billing_country,
+        ship_addr.addr1 AS shipping_address_line_1,
+        ship_addr.addr2 AS shipping_address_line_2,
+        ship_addr.city AS shipping_city,
+        ship_addr.state AS shipping_state,
+        ship_addr.zip AS shipping_zip,
+        ship_addr.country AS shipping_country
+    FROM customer c
+    LEFT JOIN customeraddressbookentityaddress bill_addr
+        ON c.defaultbillingaddress = bill_addr.nkey
+    LEFT JOIN customeraddressbookentityaddress ship_addr
+        ON c.defaultshippingaddress = ship_addr.nkey
+    WHERE c.isinactive = 'F'
+     AND isperson = 'F'     
+    `;
+
+// AND c.id = '82085'
+// fetchFromNetsuite(query, 10);
+
+const statusQuery = `
+  SELECT *
+  FROM
+    entitystatus
+`;
+
+// // Fetch up to 100 statuses to ensure you get the complete mapping table
+fetchFromNetsuite(statusQuery, 100);
+// fetchCustomer("companyname", "Rosengren Lawn Care & Landscpaing");
+
+// processBatchOfCompanies([
+//   {
+//     links: [],
+//     billing_address_line_1: "TBD",
+//     billing_city: "ALEXANDRIA",
+//     billing_country: "US",
+//     billing_state: "MN",
+//     billing_zip: "56308",
+//     companyname: "Upper Deck Construction",
+//     custentity11: "F",
+//     custentity2: "F",
+//     custentity36: "F",
+//     custentity_acs_processed: "F",
+//     custentity_date_lsa: "4/17/2024",
+//     email: "rey.upperdeckconstruction@gmail.com",
+//     entityid: "1288927794",
+//     entitystatus: "10",
+//     firstname: "Rey",
+//     id: "1147194",
+//     isinactive: "F",
+//     isperson: "T",
+//     lastmodifieddate: "7/21/2025",
+//     lastname: "Fuglestad",
+//     phone: "1 320-491-9047",
+//     salesrep_id: "114",
+//     salesrep_name: "Tyson Langlie",
+//     shipping_address_line_1: "807 MCKAY AVE S",
+//     shipping_city: "ALEXANDRIA",
+//     shipping_country: "US",
+//     shipping_state: "MN",
+//     shipping_zip: "56308",
+//     stage: "PROSPECT",
+//     taxable: "T",
+//     unsubscribe: "T",
+//   },
+// ]);
+
+/*!SECTION
+ {
+    links: [],
+    billing_address_line_1: "2720 OLD COUNTY ROAD 120 NE",
+    billing_city: "ALEXANDRIA",
+    billing_country: "US",
+    billing_state: "MN",
+    billing_zip: "56308",
+    companyname: "Rosengren Lawn Care & Landscpaing",
+    custentity11: "T",
+    custentity16: "356",
+    custentity2: "F",
+    custentity36: "F",
+    custentity_date_lsa: "11/17/2025",
+    custentity_skidpro_carrier3: "351",
+    custentity_sp_alt_email: "ryanrosengren@gctel.net",
+    custentity_sp_skid_steer_make: "CAT",
+    custentity_sp_skid_steer_model: "262-C",
+    dateclosed: "10/29/2022",
+    email: "ryanrosengren@gctel.net",
+    entityid: "75094",
+    entitystatus: "13",
+    firstname: "Ryan",
+    firstsaledate: "4/6/2018",
+    id: "82085",
+    isinactive: "F",
+    isperson: "T",
+    lastmodifieddate: "11/17/2025",
+    lastname: "Rosengren",
+    phone: "1 320-815-3217",
+    salesrep_id: "98",
+    salesrep_name: "Erik Gullickson",
+    shipping_address_line_1: "807 MCKAY AVE S",
+    shipping_city: "ALEXANDRIA",
+    shipping_country: "US",
+    shipping_state: "MN",
+    shipping_zip: "56308",
+    stage: "CUSTOMER",
+    taxable: "T",
+    unsubscribe: "T",
+  },
+
+*/
