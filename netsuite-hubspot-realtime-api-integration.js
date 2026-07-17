@@ -32,7 +32,7 @@ async function init() {
       logger.info(`Configs Initialization initialized successfully`);
       getHubspotClient();
       getNetsuiteClient();
-      // startSchedulers();
+      startSchedulers();
     } catch (error) {
       logger.error("Error in Configs Initialization:", {
         status: error?.status,
