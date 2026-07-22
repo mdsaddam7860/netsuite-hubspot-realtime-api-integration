@@ -10,7 +10,7 @@ import { logger } from "../index.js";
 //   const previousDate = date.toISOString().split("T")[0];
 //   return previousDate;
 // }
-function delta(hoursBack = 120) {
+function delta(hoursBack = 12) {
   const date = new Date();
   date.setHours(date.getHours() - hoursBack);
 

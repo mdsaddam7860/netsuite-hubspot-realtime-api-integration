@@ -7,8 +7,8 @@ import cron from "node-cron";
 import { runProductSync } from "../../sync_products.js";
 import { netsuiteToHubspot } from "../services/netsuite.service.js";
 
-const schedulerFreq = "*/1 * * * *";
-// const schedulerFreq = "0 */6 * * *";
+// const schedulerFreq = "*/1 * * * *";
+const schedulerFreq = "0 */6 * * *";
 
 export function startSchedulers() {
   logger.info(
