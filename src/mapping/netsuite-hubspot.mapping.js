@@ -208,6 +208,92 @@ function contactMappingNSToHS(sourceData) {
   return payload;
 }
 
+// function companyMappingNSToHS(sourceData) {
+//   if (!sourceData?.companyname) {
+//     logger.warn(`Company name is empty for company ID: ${sourceData?.id}`);
+//     return null;
+//   }
+
+//   const payload = cleanProps({
+//     // ========== Core Identity ==========
+//     sourceid: sourceData?.id, // custom property
+//     name: sourceData?.companyname,
+//     domain: sourceData?.website || null,
+
+//     // ========== Email Fields (custom company properties) ==========
+//     // Note: HubSpot Company object does NOT have a standard 'email' property.
+//     // The following fields must exist as custom company properties in HS.
+//     alt_email: sourceData?.custentity_sp_alt_email,
+//     // alt_email_2: sourceData?.custentity34,
+//     // alt_email_3: sourceData?.custentity35,
+
+//     // ========== Phone Fields ==========
+//     phone: sourceData?.phone,
+//     mobilephone: sourceData?.mobilephone, // custom property on Company
+//     work_phone: sourceData?.custentity31,
+//     alt_phone_2: sourceData?.custentity32,
+//     alt_phone_3: sourceData?.custentity33,
+
+//     // ========== Address Fields ==========
+//     // Your existing address logic (keeping as-is, even if defaultbillingaddress is an ID)
+//     address: sourceData?.defaultbillingaddress,
+//     address2: sourceData?.defaultshippingaddress,
+//     city: sourceData?.billing_city || sourceData?.shipping_city,
+//     state: sourceData?.billing_state || sourceData?.shipping_state,
+//     country: sourceData?.billing_country || sourceData?.shipping_country,
+//     zip: sourceData?.billing_zip || sourceData?.shipping_zip,
+
+//     // ========== Equipment & Machine Info ==========
+//     carrier_machine: sourceData?.carrier_machine_name,
+//     carrier_machine_2: sourceData?.carrier_machine_2_name,
+//     carrier_machine_3: sourceData?.carrier_machine_3_name,
+//     carrier_machine_4: sourceData?.carrier_machine_4_name,
+//     skid_loader_make: sourceData?.custentity4,
+//     brand__model: sourceData?.custentity5,
+//     lead_ad_prop1: sourceData?.custentity_sp_skid_steer_make, // Skid Steer Make
+//     lead_ad_prop2: sourceData?.custentity_sp_skid_steer_model, // Skid Steer Model
+//     machine_type: sourceData?.custentity29,
+//     attachments_of_interest: sourceData?.custentity18,
+//     current_attachments: sourceData?.custentity27,
+
+//     // ========== Sales & Ownership ==========
+//     sales_rep: sourceData?.custentityacs_salesrep,
+//     // ownername: sourceData?.["BUILTIN.DF(salesrep)"],   // read‑only / legacy – commented
+
+//     // ========== Status & Lifecycle ==========
+//     lifecyclestage: mapCompanyLifecyclestage(sourceData?.entitystatus),
+//     hs_lead_status: mapCompanyLeadStatus(sourceData?.stage),
+//     closedate: toHubSpotUnixMs(sourceData?.dateclosed),
+
+//     // ========== Lead Source & Marketing ==========
+//     referred_by: sourceData?.custentity1,
+//     referral: ToHSBool(sourceData?.custentity2),
+//     competitor_shopping: sourceData?.custentity28,
+
+//     // ========== Communication Preferences ==========
+//     // hs_email_optout: ToHSBool(sourceData?.custentity11), // Unsubscribed from all email
+//     // unsubscribe: ToHSBool(sourceData?.unsubscribe),     // Not a standard Company field
+//     sms: ToHSBool(sourceData?.custentity36), // SMS subscription
+
+//     // ========== Financial ==========
+//     taxable: ToHSBool(sourceData?.taxable), // or use your own boolean helper
+
+//     // ========== Sales Activity & Engagement ==========
+
+//     // ========== Read‑Only Properties (commented – cannot be set via API) ==========
+//     // lastmodifieddate: toHubSpotUnixMs(sourceData?.lastmodifieddate),
+//     // hs_last_sales_activity_timestamp: toHubSpotUnixMs(
+//     //   sourceData?.custentity_date_lsa
+//     // ),
+//     // hs_recent_closed_order_date: toHubSpotUnixMs(sourceData?.lastsaledate),
+//     // hs_first_order_closed_date: toHubSpotUnixMs(sourceData?.firstsaledate),
+//   });
+//   logger.debug(`[Netsuite] Company : ${JSON.stringify(sourceData)}
+//   \n Payload ${JSON.stringify(payload)}
+//   `);
+//   return payload;
+// }
+
 function companyMappingNSToHS(sourceData) {
   if (!sourceData?.companyname) {
     logger.warn(`Company name is empty for company ID: ${sourceData?.id}`);
@@ -221,18 +307,18 @@ function companyMappingNSToHS(sourceData) {
     domain: sourceData?.website || null,
 
     // ========== Email Fields (custom company properties) ==========
-    // Note: HubSpot Company object does NOT have a standard 'email' property.
-    // The following fields must exist as custom company properties in HS.
-    alt_email: sourceData?.custentity_sp_alt_email,
+    // Note: HubSpot Company object does NOT have a standard 'email' property,
+    // and 'alt_email' does not exist as a company property either.
+    // alt_email: sourceData?.custentity_sp_alt_email,
     // alt_email_2: sourceData?.custentity34,
     // alt_email_3: sourceData?.custentity35,
 
     // ========== Phone Fields ==========
     phone: sourceData?.phone,
-    mobilephone: sourceData?.mobilephone, // custom property on Company
-    work_phone: sourceData?.custentity31,
-    alt_phone_2: sourceData?.custentity32,
-    alt_phone_3: sourceData?.custentity33,
+    // mobilephone: sourceData?.mobilephone, // not a Company property (Contact-only)
+    // work_phone: sourceData?.custentity31, // property does not exist
+    // alt_phone_2: sourceData?.custentity32, // property does not exist
+    // alt_phone_3: sourceData?.custentity33, // property does not exist
 
     // ========== Address Fields ==========
     // Your existing address logic (keeping as-is, even if defaultbillingaddress is an ID)
@@ -244,20 +330,20 @@ function companyMappingNSToHS(sourceData) {
     zip: sourceData?.billing_zip || sourceData?.shipping_zip,
 
     // ========== Equipment & Machine Info ==========
-    carrier_machine: sourceData?.carrier_machine_name,
-    carrier_machine_2: sourceData?.carrier_machine_2_name,
-    carrier_machine_3: sourceData?.carrier_machine_3_name,
-    carrier_machine_4: sourceData?.carrier_machine_4_name,
-    skid_loader_make: sourceData?.custentity4,
-    brand__model: sourceData?.custentity5,
-    lead_ad_prop1: sourceData?.custentity_sp_skid_steer_make, // Skid Steer Make
-    lead_ad_prop2: sourceData?.custentity_sp_skid_steer_model, // Skid Steer Model
-    machine_type: sourceData?.custentity29,
-    attachments_of_interest: sourceData?.custentity18,
-    current_attachments: sourceData?.custentity27,
+    // carrier_machine: sourceData?.carrier_machine_name,
+    // carrier_machine_2: sourceData?.carrier_machine_2_name, // property does not exist
+    // carrier_machine_3: sourceData?.carrier_machine_3_name, // property does not exist
+    // carrier_machine_4: sourceData?.carrier_machine_4_name, // property does not exist
+    // skid_loader_make: sourceData?.custentity4, // property does not exist
+    // brand__model: sourceData?.custentity5, // property does not exist
+    // lead_ad_prop1: sourceData?.custentity_sp_skid_steer_make, // property does not exist
+    // lead_ad_prop2: sourceData?.custentity_sp_skid_steer_model, // property does not exist
+    // machine_type: sourceData?.custentity29, // property does not exist
+    // attachments_of_interest: sourceData?.custentity18, // property does not exist
+    // current_attachments: sourceData?.custentity27, // property does not exist
 
     // ========== Sales & Ownership ==========
-    sales_rep: sourceData?.custentityacs_salesrep,
+    // sales_rep: sourceData?.custentityacs_salesrep, // property does not exist; use hubspot_owner_id instead
     // ownername: sourceData?.["BUILTIN.DF(salesrep)"],   // read‑only / legacy – commented
 
     // ========== Status & Lifecycle ==========
@@ -266,17 +352,17 @@ function companyMappingNSToHS(sourceData) {
     closedate: toHubSpotUnixMs(sourceData?.dateclosed),
 
     // ========== Lead Source & Marketing ==========
-    referred_by: sourceData?.custentity1,
-    referral: ToHSBool(sourceData?.custentity2),
-    competitor_shopping: sourceData?.custentity28,
+    // referred_by: sourceData?.custentity1, // property does not exist
+    // referral: ToHSBool(sourceData?.custentity2), // property does not exist
+    // competitor_shopping: sourceData?.custentity28, // property does not exist
 
     // ========== Communication Preferences ==========
     // hs_email_optout: ToHSBool(sourceData?.custentity11), // Unsubscribed from all email
     // unsubscribe: ToHSBool(sourceData?.unsubscribe),     // Not a standard Company field
-    sms: ToHSBool(sourceData?.custentity36), // SMS subscription
+    // sms: ToHSBool(sourceData?.custentity36), // property does not exist
 
     // ========== Financial ==========
-    taxable: ToHSBool(sourceData?.taxable), // or use your own boolean helper
+    // taxable: ToHSBool(sourceData?.taxable), // property does not exist
 
     // ========== Sales Activity & Engagement ==========
 
@@ -293,7 +379,6 @@ function companyMappingNSToHS(sourceData) {
   `);
   return payload;
 }
-
 /**
  * Maps NetSuite `entitystatus` IDs to HubSpot Company `lifecyclestage` internal names.
  *
