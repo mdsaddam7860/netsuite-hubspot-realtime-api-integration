@@ -2,14 +2,32 @@ import fs from "fs";
 import path from "path";
 import { getHubspotClient } from "../configs/hubspot.config.js";
 import { logger } from "../index.js";
-function delta(numberOfDaysback = 1) {
-  const date = new Date();
-  // date.setDate(date.getDate() - 2);
-  date.setDate(date.getDate() - `${numberOfDaysback}`);
+// function delta(numberOfDaysback = 1) {
+//   const date = new Date();
+//   // date.setDate(date.getDate() - 2);
+//   date.setDate(date.getDate() - `${numberOfDaysback}`);
 
-  const previousDate = date.toISOString().split("T")[0];
-  return previousDate;
+//   const previousDate = date.toISOString().split("T")[0];
+//   return previousDate;
+// }
+function delta(hoursBack = 120) {
+  const date = new Date();
+  date.setHours(date.getHours() - hoursBack);
+
+  // Format as 'YYYY-MM-DD HH24:MI:SS' for NetSuite TO_DATE
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const yyyy = date.getFullYear();
+  const mm = pad(date.getMonth() + 1);
+  const dd = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const min = pad(date.getMinutes());
+  const ss = pad(date.getSeconds());
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
 }
+
+console.log(delta());
 function currentDate() {
   const date = new Date();
 
@@ -654,7 +672,7 @@ function customerQuery(arg) {
     LEFT JOIN customeraddressbookentityaddress ship_addr 
         ON c.defaultshippingaddress = ship_addr.nkey
     WHERE c.isinactive = 'F' 
-      AND c.lastmodifieddate > TO_DATE('${targetDate}', 'YYYY-MM-DD')
+    AND c.lastmodifieddate > TO_DATE('${targetDate}', 'YYYY-MM-DD HH24:MI:SS')
       AND isperson = '${isPerson}'
 `;
 

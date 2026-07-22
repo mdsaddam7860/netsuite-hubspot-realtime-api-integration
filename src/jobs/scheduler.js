@@ -8,7 +8,7 @@ import { runProductSync } from "../../sync_products.js";
 import { netsuiteToHubspot } from "../services/netsuite.service.js";
 
 const schedulerFreq = "*/1 * * * *";
-// const schedulerFreq = "0 * * * *";
+// const schedulerFreq = "0 */6 * * *";
 
 export function startSchedulers() {
   logger.info(
@@ -25,7 +25,7 @@ export function startSchedulers() {
       // await runProductSync(false);
       await netsuiteToHubspot(); // Sync Customer as Contact/Company to HubSpot
     } catch (error) {
-      logger.error(`[CRON] Product batch sync failed:`, {
+      logger.error(`[CRON] netsuiteToHubspot batch sync failed:`, {
         status: error?.status,
         url: error?.config?.url,
         message: error.message,
