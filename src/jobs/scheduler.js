@@ -4,7 +4,6 @@
  */
 import { logger } from "../index.js";
 import cron from "node-cron";
-import { runProductSync } from "../../sync_products.js";
 import { netsuiteToHubspot } from "../services/netsuite.service.js";
 
 // const schedulerFreq = "*/1 * * * *";
@@ -12,7 +11,7 @@ const schedulerFreq = "0 */6 * * *";
 
 export function startSchedulers() {
   logger.info(
-    `Initializing product sync background jobs, schedulerFreq : ${schedulerFreq}...`
+    `Initializing netuiteToHubspot sync background jobs, schedulerFreq : ${schedulerFreq}...`
   );
   // Schedule: '0 * * * *' (Every hour on the hour)
   // Tip: Change to '*/2 * * * *' to run every 2 minutes while testing!
@@ -22,7 +21,6 @@ export function startSchedulers() {
     );
     try {
       // Run the batch sync incrementally (false = not a full sync)
-      // await runProductSync(false);
       await netsuiteToHubspot(); // Sync Customer as Contact/Company to HubSpot
     } catch (error) {
       logger.error(`[CRON] netsuiteToHubspot batch sync failed:`, {

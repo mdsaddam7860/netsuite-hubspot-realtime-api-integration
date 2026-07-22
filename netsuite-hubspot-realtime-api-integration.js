@@ -10,13 +10,13 @@ import { startSchedulers } from "./src/jobs/scheduler.js";
 // 0. AUTO-CREATE REQUIRED DIRECTORIES
 // ============================================================================
 // This replaces the need for "mkdir -p logs checkpoints"
-const requiredDirs = ["./logs", "./checkpoints"];
-requiredDirs.forEach((dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`📁 Auto-created missing directory: ${dir}`);
-  }
-});
+// const requiredDirs = ["./logs", "./checkpoints"];
+// requiredDirs.forEach((dir) => {
+//   if (!fs.existsSync(dir)) {
+//     fs.mkdirSync(dir, { recursive: true });
+//     console.log(`Auto-created missing directory: ${dir}`);
+//   }
+// });
 
 const PORT = process.env.PORT || 5000;
 serverInit();
